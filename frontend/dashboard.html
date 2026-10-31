@@ -5,73 +5,86 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SENTINEL — Fraud Detection</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
 :root {
-  --bg: #04080f;
-  --bg2: #080f1a;
-  --bg3: #0c1824;
-  --border: #152840;
-  --cyan: #00d4ff;
-  --green: #00ff88;
-  --red: #ff2d55;
-  --orange: #ff9500;
-  --yellow: #ffd60a;
-  --txt: #dceeff;
-  --txt2: #6a9bbf;
-  --txt3: #2d5070;
+  color-scheme: dark;
+  --bg: #090909;
+  --bg2: #0e1411;
+  --bg3: #121a15;
+  --border: #1d2b23;
+  --ink: #ffffff;
+  --muted: #9fb3a8;
+  --accent: #1fe783;
+  --ok: #1fe783;
+  --bad: #ff5d6c;
+  --warn: #ffd166;
   --sidebar: 230px;
-  --mono: 'Share Tech Mono', monospace;
-  --body: 'Rajdhani', sans-serif;
-  --display: 'Orbitron', monospace;
+  --body: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --mono: var(--body);
+  --display: var(--body);
+  --heading: var(--body);
+  /* Temporary aliases keep the existing panels consistent as later steps land. */
+  --cyan: var(--accent);
+  --green: var(--ok);
+  --red: var(--bad);
+  --orange: var(--warn);
+  --yellow: var(--warn);
+  --txt: var(--ink);
+  --txt2: #c4d3ca;
+  --txt3: var(--muted);
 }
 *{margin:0;padding:0;box-sizing:border-box}
-html,body{height:100%;overflow:hidden}
-body{background:var(--bg);color:var(--txt);font-family:var(--body);font-size:14px;display:flex}
+[hidden]{display:none!important}
+html,body{min-height:100%;max-width:100%;overflow-x:hidden}
+body{min-height:100vh;background:radial-gradient(900px 480px at 15% -8%,rgba(31,231,131,.18),transparent 62%) fixed,var(--bg);color:var(--txt);font-family:var(--body);font-size:16px;display:flex}
 
 /* ── SIDEBAR ── */
 .sidebar{
   width:var(--sidebar);flex-shrink:0;
-  background:var(--bg2);border-right:1px solid var(--border);
+  background:rgba(14,20,17,.94);border-right:1px solid var(--border);
   display:flex;flex-direction:column;position:relative;z-index:10;
 }
-.sidebar::after{content:'';position:absolute;top:0;right:0;bottom:0;width:1px;background:linear-gradient(180deg,transparent,rgba(0,212,255,.3),transparent)}
-.sb-logo{padding:20px 16px 14px;border-bottom:1px solid var(--border)}
-.sb-logo-name{font-family:var(--display);font-size:16px;font-weight:900;color:var(--cyan);letter-spacing:3px;text-shadow:0 0 20px rgba(0,212,255,.4)}
-.sb-logo-sub{font-family:var(--mono);font-size:8px;color:var(--txt3);letter-spacing:2px;margin-top:3px}
-.sb-pill{display:inline-flex;align-items:center;gap:5px;background:rgba(0,255,136,.08);border:1px solid rgba(0,255,136,.25);border-radius:20px;padding:3px 9px;margin-top:8px;font-family:var(--mono);font-size:8px;color:var(--green)}
-.sb-dot{width:5px;height:5px;background:var(--green);border-radius:50%;animation:pg 2s infinite}
+.sidebar::after{content:'';position:absolute;top:0;right:0;bottom:0;width:1px;background:linear-gradient(180deg,transparent,rgba(31,231,131,.3),transparent)}
+.sb-logo{padding:22px 18px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px}
+.sb-mark{width:30px;height:30px;flex:0 0 auto}
+.sb-brand{min-width:0}
+.sb-logo-name{font-family:var(--heading);font-size:22px;font-weight:800;color:var(--ink);letter-spacing:-.03em}
+.sb-logo-sub{font-family:var(--body);font-size:14px;color:var(--muted);margin-top:2px}
 @keyframes pg{0%,100%{opacity:1}50%{opacity:.3}}
-.sb-nav{padding:14px 10px;flex:1}
-.sb-sec{font-family:var(--mono);font-size:8px;color:var(--txt3);letter-spacing:2px;padding:0 8px;margin-bottom:6px;margin-top:4px}
+.sb-nav{padding:18px 12px;flex:1}
+.sb-sec{font-family:var(--mono);font-size:14px;color:var(--txt3);letter-spacing:2px;padding:0 8px;margin-bottom:6px;margin-top:4px}
 .nav-btn{
   display:flex;align-items:center;gap:10px;width:100%;
-  padding:9px 12px;border-radius:6px;border:1px solid transparent;
+  padding:11px 14px;border-radius:999px;border:1px solid transparent;
   background:none;color:var(--txt2);cursor:pointer;
-  font-family:var(--body);font-size:13px;font-weight:500;letter-spacing:.3px;
+  font-family:var(--body);font-size:14px;font-weight:500;letter-spacing:.3px;
   transition:all .2s;margin-bottom:2px;text-align:left;position:relative;
 }
 .nav-btn:hover{background:var(--bg3);color:var(--txt);border-color:var(--border)}
-.nav-btn.active{background:rgba(0,212,255,.07);color:var(--cyan);border-color:rgba(0,212,255,.2)}
-.nav-btn.active::before{content:'';position:absolute;left:0;top:22%;bottom:22%;width:2px;background:var(--cyan);border-radius:2px;box-shadow:0 0 8px var(--cyan)}
+.nav-btn.active{background:rgba(31,231,131,.12);color:var(--accent);border-color:rgba(31,231,131,.22)}
+.nav-btn.active::before{content:none}
 .nav-icon{font-size:14px;width:18px;text-align:center;flex-shrink:0}
 .sb-footer{padding:12px;border-top:1px solid var(--border)}
-.sb-api{font-family:var(--mono);font-size:8px;color:var(--txt3);display:flex;align-items:center;gap:5px}
+.sb-api{font-family:var(--body);font-size:14px;color:var(--txt2);display:flex;align-items:center;gap:5px;line-height:1.4}
+.sb-api[data-state="online"]{color:var(--ok)}
+.sb-api[data-state="demo"]{color:var(--warn)}
+.sb-api[data-state="error"]{color:var(--red)}
 
 /* ── MAIN ── */
-.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.main{flex:1;min-width:0;width:calc(100% - var(--sidebar));max-width:1500px;margin:0 auto;display:flex;flex-direction:column}
 .topbar{
   height:54px;background:var(--bg2);border-bottom:1px solid var(--border);
   display:flex;align-items:center;justify-content:space-between;padding:0 22px;flex-shrink:0;
 }
-.topbar-title{font-family:var(--display);font-size:11px;font-weight:700;letter-spacing:2px}
+.topbar-title{font-family:var(--heading);font-size:14px;font-weight:700;letter-spacing:2px}
 .topbar-r{display:flex;align-items:center;gap:14px}
-.live-badge{display:flex;align-items:center;gap:4px;background:rgba(255,45,85,.1);border:1px solid rgba(255,45,85,.35);border-radius:4px;padding:3px 9px;font-family:var(--mono);font-size:9px;color:var(--red);letter-spacing:1px}
+.live-badge{display:flex;align-items:center;gap:4px;background:rgba(255,45,85,.1);border:1px solid rgba(255,45,85,.35);border-radius:4px;padding:3px 9px;font-family:var(--mono);font-size:14px;color:var(--red);letter-spacing:1px}
 .live-dot{width:5px;height:5px;background:var(--red);border-radius:50%;animation:bk 1s infinite}
 @keyframes bk{0%,100%{opacity:1}50%{opacity:.15}}
-.clock{font-family:var(--mono);font-size:11px;color:var(--cyan)}
-.content{flex:1;overflow-y:auto;padding:20px}
+.clock{font-family:var(--mono);font-size:14px;color:var(--cyan)}
+.content{flex:1;min-width:0;width:100%;padding:28px}
 
 /* ── SECTIONS ── */
 .section{display:none;animation:fadeIn .3s ease}
@@ -79,33 +92,41 @@ body{background:var(--bg);color:var(--txt);font-family:var(--body);font-size:14p
 @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 
 /* ── STAT CARDS ── */
-.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
-.stat{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:18px;position:relative;overflow:hidden;transition:border-color .2s}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr));gap:14px;margin-bottom:20px}
+.stat{background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:20px;position:relative;overflow:hidden;transition:border-color .2s}
 .stat:hover{border-color:rgba(0,212,255,.3)}
 .stat::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
 .stat.c::before{background:var(--cyan)}.stat.g::before{background:var(--green)}
 .stat.r::before{background:var(--red)}.stat.o::before{background:var(--orange)}
-.stat-lbl{font-family:var(--mono);font-size:8px;color:var(--txt3);letter-spacing:2px;margin-bottom:8px}
-.stat-val{font-family:var(--display);font-size:26px;font-weight:700;line-height:1;margin-bottom:4px}
+.stat-lbl{font-family:var(--mono);font-size:14px;color:var(--txt3);letter-spacing:2px;margin-bottom:8px}
+.stat-val{font-family:var(--display);font-size:36px;font-weight:800;line-height:1.05;font-variant-numeric:tabular-nums;margin-bottom:8px}
+.stat-val.state-copy{font-size:14px;line-height:1.35;overflow-wrap:anywhere}
+.error-copy{color:var(--red)!important}
 .stat.c .stat-val{color:var(--cyan)}.stat.g .stat-val{color:var(--green)}
 .stat.r .stat-val{color:var(--red)}.stat.o .stat-val{color:var(--orange)}
-.stat-sub{font-family:var(--mono);font-size:9px;color:var(--txt3)}
+.stat-sub{font-family:var(--mono);font-size:14px;color:var(--txt3)}
 .stat-ico{position:absolute;right:14px;top:14px;font-size:24px;opacity:.12}
+.stats-grid>.stat:first-child{background:var(--accent);border-color:var(--accent);color:#090909}
+.stats-grid>.stat:first-child .stat-lbl,.stats-grid>.stat:first-child .stat-sub{color:rgba(9,9,9,.72)}
+.stats-grid>.stat:first-child .stat-val{color:#090909}
+.stats-grid>.stat:first-child .stat-ico{opacity:.18}
 
 /* ── CARDS ── */
-.card{background:var(--bg3);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:16px}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:20px;overflow:hidden;margin-bottom:16px}
 .card-h{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;border-bottom:1px solid var(--border)}
-.card-t{font-family:var(--display);font-size:10px;font-weight:700;letter-spacing:2px}
+.card-t{font-family:var(--heading);font-size:14px;font-weight:700;letter-spacing:1px}
 .card-b{padding:18px}
-.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-.g3{display:grid;grid-template-columns:1.7fr 1fr;gap:16px}
+.g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;width:100%}
+.g3{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:16px;width:100%}
+.g2>*,.g3>*{min-width:0}
 
 /* ── TABLE ── */
-.tbl{width:100%;border-collapse:collapse}
-.tbl th{font-family:var(--mono);font-size:8px;color:var(--txt3);letter-spacing:2px;text-align:left;padding:8px 12px;border-bottom:1px solid var(--border);background:rgba(0,0,0,.2)}
-.tbl td{padding:9px 12px;border-bottom:1px solid rgba(21,40,64,.5);font-size:11px;font-family:var(--mono)}
+.tbl{width:100%;min-width:760px;border-collapse:collapse}
+.table-scroll{width:100%;overflow-x:auto}
+.tbl th{font-family:var(--mono);font-size:14px;color:var(--txt3);letter-spacing:2px;text-align:left;padding:8px 12px;border-bottom:1px solid var(--border);background:rgba(0,0,0,.2)}
+.tbl td{padding:9px 12px;border-bottom:1px solid rgba(21,40,64,.5);font-size:14px;font-family:var(--mono)}
 .tbl tr:hover td{background:rgba(255,255,255,.015)}
-.badge{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:3px;font-size:8px;font-weight:bold;letter-spacing:1px;font-family:var(--mono)}
+.badge{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:3px;font-size:14px;font-weight:bold;letter-spacing:1px;font-family:var(--mono)}
 .b-fraud{background:rgba(255,45,85,.15);color:var(--red);border:1px solid rgba(255,45,85,.3)}
 .b-legit{background:rgba(0,255,136,.08);color:var(--green);border:1px solid rgba(0,255,136,.2)}
 .b-h{background:rgba(255,45,85,.15);color:var(--red);border:1px solid rgba(255,45,85,.3)}
@@ -113,39 +134,50 @@ body{background:var(--bg);color:var(--txt);font-family:var(--body);font-size:14p
 .b-l{background:rgba(0,255,136,.08);color:var(--green);border:1px solid rgba(0,255,136,.2)}
 
 /* ── FORMS ── */
-.form-lbl{display:block;font-family:var(--mono);font-size:8px;color:var(--txt3);letter-spacing:2px;margin-bottom:5px}
-.form-inp{width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:5px;padding:8px 12px;color:var(--txt);font-family:var(--mono);font-size:11px;outline:none;transition:border-color .2s}
+.form-lbl{display:block;font-family:var(--mono);font-size:14px;color:var(--txt3);letter-spacing:2px;margin-bottom:5px}
+.form-inp{width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:5px;padding:8px 12px;color:var(--txt);font-family:var(--mono);font-size:14px;outline:none;transition:border-color .2s}
 .form-inp:focus{border-color:var(--cyan);box-shadow:0 0 0 2px rgba(0,212,255,.08)}
-.fg{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
-.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:5px;border:1px solid;cursor:pointer;font-family:var(--display);font-size:10px;font-weight:700;letter-spacing:1px;transition:all .2s}
+.paste-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:end;margin:14px 0}
+.paste-input{min-height:84px;resize:vertical;line-height:1.5}
+.analyzer-help{font-size:14px;color:var(--txt2);line-height:1.55;margin:8px 0 14px}
+.preset-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.feature-details{margin-top:12px;border:1px solid var(--border);border-radius:14px;background:rgba(0,0,0,.12)}
+.feature-details summary{cursor:pointer;padding:12px 14px;font-size:14px;font-weight:700;color:var(--txt2)}
+.feature-details[open] summary{border-bottom:1px solid var(--border)}
+.feature-details .fg{padding:14px;margin:0}
+.paste-status{min-height:20px;font-size:14px;color:var(--muted);margin-top:6px}
+.paste-status.error{color:var(--red)}
+.fg{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,135px),1fr));gap:10px;margin-bottom:12px}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:999px;border:1px solid;cursor:pointer;font-family:var(--display);font-size:14px;font-weight:700;letter-spacing:1px;transition:all .2s}
 .btn-c{background:rgba(0,212,255,.08);border-color:var(--cyan);color:var(--cyan)}
 .btn-c:hover{background:rgba(0,212,255,.18);box-shadow:0 0 16px rgba(0,212,255,.25)}
 .btn-r{background:rgba(255,45,85,.08);border-color:var(--red);color:var(--red)}
 .btn-r:hover{background:rgba(255,45,85,.18)}
 .btn-g{background:rgba(0,255,136,.06);border-color:var(--green);color:var(--green)}
+button:focus-visible,.nav-btn:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
 /* ── METRICS ── */
 .mrow{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid rgba(21,40,64,.5)}
 .mrow:last-child{border:none}
-.mname{font-family:var(--mono);font-size:10px;color:var(--txt2)}
-.mval{font-family:var(--display);font-size:13px;font-weight:700;color:var(--cyan)}
+.mname{font-family:var(--mono);font-size:14px;color:var(--txt2)}
+.mval{font-family:var(--display);font-size:14px;font-weight:700;color:var(--cyan)}
 .ptrack{background:var(--border);border-radius:3px;height:5px;overflow:hidden;flex:1;margin:0 12px}
 .pfill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--cyan),var(--green));transition:width 1.2s ease}
 
 /* ── SHAP ── */
 .shap-row{display:flex;align-items:center;gap:8px;padding:5px 0}
-.shap-f{font-family:var(--mono);font-size:10px;color:var(--txt2);width:55px;flex-shrink:0}
+.shap-f{font-family:var(--mono);font-size:14px;color:var(--txt2);width:55px;flex-shrink:0}
 .shap-bc{flex:1;height:18px;background:var(--bg2);border-radius:3px;overflow:hidden;position:relative}
 .shap-pos{position:absolute;left:50%;top:0;bottom:0;background:rgba(255,45,85,.55);border-radius:0 3px 3px 0}
 .shap-neg{position:absolute;right:50%;top:0;bottom:0;background:rgba(0,212,255,.55);border-radius:3px 0 0 3px}
-.shap-v{font-family:var(--mono);font-size:9px;color:var(--txt3);width:55px;text-align:right;flex-shrink:0}
+.shap-v{font-family:var(--mono);font-size:14px;color:var(--txt3);width:55px;text-align:right;flex-shrink:0}
 
 /* ── FEED ── */
 .feed-item{
   display:grid;grid-template-columns:85px 1fr 70px 85px 80px 65px;
   align-items:center;gap:10px;padding:8px 14px;
   border-bottom:1px solid rgba(21,40,64,.4);
-  font-family:var(--mono);font-size:10px;transition:background .15s;
+  font-family:var(--mono);font-size:14px;transition:background .15s;
   animation:si .3s ease;
 }
 .feed-item:hover{background:rgba(255,255,255,.015)}
@@ -156,21 +188,21 @@ body{background:var(--bg);color:var(--txt);font-family:var(--body);font-size:14p
   gap:10px;padding:7px 14px;
   background:rgba(0,0,0,.2);border-bottom:1px solid var(--border);
 }
-.fh{font-family:var(--mono);font-size:8px;color:var(--txt3);letter-spacing:2px}
+.fh{font-family:var(--mono);font-size:14px;color:var(--txt3);letter-spacing:2px}
 
 /* ── RING ── */
 .ring-wrap{position:relative;width:110px;height:110px;margin:0 auto}
 .ring-wrap svg{transform:rotate(-90deg)}
 .ring-txt{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
 .ring-num{font-family:var(--display);font-size:20px;font-weight:900}
-.ring-lbl{font-family:var(--mono);font-size:7px;color:var(--txt3);letter-spacing:1px}
+.ring-lbl{font-family:var(--mono);font-size:14px;color:var(--txt3);letter-spacing:1px}
 
 /* ── CONFUSION MATRIX ── */
 .cm-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:340px;margin:0 auto}
 .cm-cell{text-align:center;padding:20px 10px;border-radius:7px;border:1px solid}
 .cm-n{font-family:var(--display);font-size:28px;font-weight:700;margin-bottom:4px}
-.cm-lbl{font-family:var(--mono);font-size:8px;letter-spacing:1px;margin-bottom:2px}
-.cm-sub{font-family:var(--mono);font-size:8px}
+.cm-lbl{font-family:var(--mono);font-size:14px;letter-spacing:1px;margin-bottom:2px}
+.cm-sub{font-family:var(--mono);font-size:14px}
 
 /* ── SCROLLBAR ── */
 ::-webkit-scrollbar{width:4px;height:4px}
@@ -179,16 +211,64 @@ body{background:var(--bg);color:var(--txt);font-family:var(--body);font-size:14p
 ::-webkit-scrollbar-thumb:hover{background:var(--cyan)}
 
 /* ── RESULT BOX ── */
-.result-box{background:var(--bg2);border:1px solid var(--border);border-radius:7px;padding:16px;font-family:var(--mono);font-size:11px;min-height:120px}
+.result-box{background:var(--bg2);border:1px solid var(--border);border-radius:7px;padding:16px;font-family:var(--mono);font-size:14px;min-height:120px}
 .result-fraud{border-color:rgba(255,45,85,.4);background:rgba(255,45,85,.04)}
 .result-legit{border-color:rgba(0,255,136,.25);background:rgba(0,255,136,.03)}
 
 /* ── ALERT ── */
-.alert-item{padding:9px 12px;border-radius:5px;font-family:var(--mono);font-size:9px;margin-bottom:7px;border-left:2px solid var(--red);background:rgba(255,45,85,.06);color:#ff6b87;animation:si .3s ease}
+.alert-item{padding:9px 12px;border-radius:5px;font-family:var(--mono);font-size:14px;margin-bottom:7px;border-left:2px solid var(--red);background:rgba(255,45,85,.06);color:#ff6b87;animation:si .3s ease}
 
 /* ── LOADING ── */
 .spin{width:24px;height:24px;border:2px solid var(--border);border-top-color:var(--cyan);border-radius:50%;animation:sp .7s linear infinite;margin:0 auto}
 @keyframes sp{to{transform:rotate(360deg)}}
+.state-message{padding:18px;text-align:center;border:1px dashed var(--border);border-radius:6px;background:var(--bg2);color:var(--txt2);font:inherit;line-height:1.5}
+.state-message.error{color:var(--red);border-color:rgba(255,88,117,.45)}
+.chart-frame{position:relative;min-width:0;width:100%}
+.chart-state{position:absolute;inset:0;display:grid;place-items:center;padding:12px;text-align:center;color:var(--txt2);font-size:14px;pointer-events:none}
+.chart-state.error{color:var(--red)}
+
+@media(max-width:1000px){
+  :root{--sidebar:190px}
+  .stats-grid,.stats-grid[style]{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .g2,.g3{grid-template-columns:minmax(0,1fr)}
+  .feed-item,.feed-hdr{grid-template-columns:64px minmax(120px,1fr) 68px 70px 78px 62px;gap:6px;padding-left:8px;padding-right:8px}
+}
+@media(max-width:800px){
+  body{min-height:100vh;flex-direction:column}
+  .sidebar{width:100%;min-width:0;flex-direction:row;align-items:center;border-right:0;border-bottom:1px solid var(--border)}
+  .sidebar::after{display:none}
+  .sb-logo{padding:10px 14px;border-bottom:0;flex:0 0 auto}
+  .sb-mark{width:26px;height:26px}
+  .sb-logo-name{font-size:20px}
+  .sb-logo-sub{display:none}
+  .sb-nav{padding:8px 4px;display:flex;align-items:center;gap:4px;overflow-x:auto;min-width:0}
+  .sb-sec{display:none}
+  .nav-btn{width:auto;white-space:nowrap;gap:6px;padding:9px 12px;margin:0}
+  .sb-footer{padding:8px 12px;border-top:0;border-left:1px solid var(--border);flex:0 0 auto}
+  .main{width:100%;max-width:none}
+  .topbar{padding:0 12px}
+  .topbar-r{gap:8px}
+  .content{padding:18px}
+  .stats-grid,.stats-grid[style]{grid-template-columns:minmax(0,1fr)!important}
+  .fg{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .feed-item,.feed-hdr{grid-template-columns:58px minmax(100px,1fr) 60px 64px;gap:5px}
+  .feed-item>:nth-child(5),.feed-hdr>:nth-child(5),.feed-item>:nth-child(6),.feed-hdr>:nth-child(6){display:none}
+  .stat{padding:14px}
+}
+@media(max-width:480px){
+  .sb-logo{padding:9px}
+  .sb-mark{width:22px;height:22px}
+  .sb-logo-name{font-size:18px}
+  .sb-api{font-size:14px}
+  .nav-btn{font-size:14px;padding:8px 10px}
+  .nav-icon{display:none}
+  .topbar-title{font-size:14px;letter-spacing:1px}
+  .topbar-r{gap:6px}
+  .live-badge{padding:3px 7px}
+  .clock{font-size:14px}
+  .content{padding:14px 12px}
+  .paste-row{grid-template-columns:minmax(0,1fr)}
+}
 
 /* SCANLINE */
 body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;background:repeating-linear-gradient(0deg,rgba(0,0,0,.03) 0px,rgba(0,0,0,.03) 1px,transparent 1px,transparent 2px);opacity:.4}
@@ -199,20 +279,19 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
 <!-- SIDEBAR -->
 <div class="sidebar">
   <div class="sb-logo">
-    <div class="sb-logo-name">SENTINEL</div>
-    <div class="sb-logo-sub">FRAUD DETECTION SYSTEM</div>
-    <div class="sb-pill"><span class="sb-dot"></span>SYSTEM ONLINE</div>
+    <svg class="sb-mark" viewBox="0 0 32 32" role="img" aria-label="Sentinel mark">
+      <path d="M4 7h16l-5 18H0z" fill="var(--accent)"/>
+      <path d="M15 7h16l-5 18H11z" fill="var(--accent)" opacity=".68"/>
+    </svg>
+    <div class="sb-brand"><div class="sb-logo-name">Sentinel</div><div class="sb-logo-sub">Fraud detection</div></div>
   </div>
   <div class="sb-nav">
-    <div class="sb-sec">NAVIGATION</div>
-    <button class="nav-btn active" onclick="showSection('overview',this)"><span class="nav-icon">⊞</span>Overview</button>
-    <button class="nav-btn" onclick="showSection('monitor',this)"><span class="nav-icon">◉</span>Live Monitor</button>
-    <button class="nav-btn" onclick="showSection('analyzer',this)"><span class="nav-icon">⬡</span>Analyzer</button>
-    <button class="nav-btn" onclick="showSection('performance',this)"><span class="nav-icon">▲</span>Performance</button>
-    <button class="nav-btn" onclick="showSection('shap',this)"><span class="nav-icon">◈</span>SHAP Explain</button>
+    <button class="nav-btn active" id="nav-dash" onclick="navigateTo('dash')"><span class="nav-icon">▦</span>Dashboard</button>
+    <button class="nav-btn" id="nav-ana" onclick="navigateTo('ana')"><span class="nav-icon">⌕</span>Analyzer</button>
+    <button class="nav-btn" id="nav-mod" onclick="navigateTo('mod')"><span class="nav-icon">◈</span>Model</button>
   </div>
   <div class="sb-footer">
-    <div class="sb-api" id="apiStatus">● CHECKING API...</div>
+    <div class="sb-api" id="apiStatus" data-state="checking">Checking API…</div>
   </div>
 </div>
 
@@ -222,7 +301,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
     <div class="topbar-title" id="topTitle">OVERVIEW / DASHBOARD</div>
     <div class="topbar-r">
       <div class="live-badge"><span class="live-dot"></span>LIVE</div>
-      <div class="clock" id="clock">--:--:--</div>
+      <div class="clock" id="clock">Loading time…</div>
     </div>
   </div>
   <div class="content">
@@ -230,27 +309,23 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
     <!-- ══ OVERVIEW ══ -->
     <div class="section active" id="sec-overview">
       <div class="stats-grid">
-        <div class="stat c"><div class="stat-ico">◎</div><div class="stat-lbl">TOTAL TRANSACTIONS</div><div class="stat-val" id="ovTotal">—</div><div class="stat-sub">Last 24 hours</div></div>
-        <div class="stat r"><div class="stat-ico">⚠</div><div class="stat-lbl">FRAUD DETECTED</div><div class="stat-val" id="ovFraud">—</div><div class="stat-sub" id="ovFraudPct">— fraud rate</div></div>
-        <div class="stat g"><div class="stat-ico">₹</div><div class="stat-lbl">AMOUNT PROTECTED</div><div class="stat-val" id="ovSaved">—</div><div class="stat-sub">Blocked today</div></div>
-        <div class="stat o"><div class="stat-ico">⚡</div><div class="stat-lbl">AVG RESPONSE</div><div class="stat-val" id="ovMs">—</div><div class="stat-sub">Milliseconds</div></div>
+        <div class="stat c"><div class="stat-ico">◎</div><div class="stat-lbl">TOTAL TRANSACTIONS</div><div class="stat-val state-copy" id="ovTotal">Waiting for data…</div><div class="stat-sub">Scored test sample</div></div>
+        <div class="stat r"><div class="stat-ico">⚠</div><div class="stat-lbl">FRAUD DETECTED</div><div class="stat-val state-copy" id="ovFraud">Waiting for data…</div><div class="stat-sub" id="ovFraudPct">Waiting for data…</div></div>
+        <div class="stat g"><div class="stat-ico" id="currencyIcon"></div><div class="stat-lbl">FLAGGED AMOUNT</div><div class="stat-val state-copy" id="ovSaved">Waiting for data…</div><div class="stat-sub">Flagged test sample</div></div>
+        <div class="stat o"><div class="stat-ico">⚡</div><div class="stat-lbl">AVG RESPONSE</div><div class="stat-val state-copy" id="ovMs">Waiting for data…</div><div class="stat-sub">Milliseconds</div></div>
       </div>
-      <div class="g3">
-        <div class="card" style="margin:0">
-          <div class="card-h"><span class="card-t">TRANSACTION VOLUME — 24H</span></div>
-          <div class="card-b"><div style="height:200px"><canvas id="volChart"></canvas></div></div>
-        </div>
+      <div class="g2" style="grid-template-columns:1fr">
         <div class="card" style="margin:0">
           <div class="card-h"><span class="card-t">FRAUD SPLIT</span></div>
-          <div class="card-b"><div style="height:200px"><canvas id="donutChart"></canvas></div></div>
+          <div class="card-b"><div class="chart-frame" style="height:200px"><div id="donutState" class="chart-state">Waiting for data…</div><canvas id="donutChart"></canvas></div></div>
         </div>
       </div>
       <div class="card">
         <div class="card-h">
           <span class="card-t">RECENT TRANSACTIONS</span>
-          <button class="btn btn-c" onclick="loadOverviewTxns()" style="padding:4px 12px;font-size:9px">↻ REFRESH</button>
+          <button class="btn btn-c" onclick="loadOverviewTxns()" style="padding:4px 12px;font-size:14px">↻ REFRESH</button>
         </div>
-        <div id="ovTxnWrap"><div style="padding:24px;text-align:center"><div class="spin"></div></div></div>
+        <div id="ovTxnWrap"><div class="state-message">Waiting for data…</div></div>
       </div>
     </div>
 
@@ -266,13 +341,13 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
         <div class="card" style="margin:0">
           <div class="card-h">
             <span class="card-t">LIVE FEED</span>
-            <button class="btn btn-c" id="pauseBtn" onclick="togglePause()" style="padding:4px 12px;font-size:9px">⏸ PAUSE</button>
+            <button class="btn btn-c" id="pauseBtn" onclick="togglePause()" style="padding:4px 12px;font-size:14px">⏸ PAUSE</button>
           </div>
           <div class="feed-hdr">
-            <span class="fh">TXN ID</span><span class="fh">MERCHANT</span><span class="fh">AMOUNT</span>
+            <span class="fh">TXN ID</span><span class="fh">MERCHANT / LOCATION (SIMULATED)</span><span class="fh">AMOUNT</span>
             <span class="fh">PROB</span><span class="fh">STATUS</span><span class="fh">TIME</span>
           </div>
-          <div id="liveFeed" style="max-height:350px;overflow-y:auto"></div>
+          <div id="liveFeed" style="max-height:350px;overflow-y:auto"><div class="state-message">Waiting for data…</div></div>
         </div>
         <div style="display:flex;flex-direction:column;gap:14px">
           <div class="card" style="margin:0">
@@ -301,14 +376,14 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
           <div class="card" style="margin:0;flex:1">
             <div class="card-h"><span class="card-t">⚠ ALERTS</span></div>
             <div id="alertPanel" style="padding:10px;max-height:200px;overflow-y:auto">
-              <div style="font-family:var(--mono);font-size:9px;color:var(--txt3);text-align:center;padding:12px">No alerts yet...</div>
+              <div style="font-family:var(--mono);font-size:14px;color:var(--txt3);text-align:center;padding:12px">No alerts yet...</div>
             </div>
           </div>
         </div>
       </div>
       <div class="card">
         <div class="card-h"><span class="card-t">FRAUD PROBABILITY TREND</span></div>
-        <div class="card-b"><div style="height:150px"><canvas id="trendChart"></canvas></div></div>
+        <div class="card-b"><div class="chart-frame" style="height:150px"><div id="trendState" class="chart-state">Waiting for data…</div><canvas id="trendChart"></canvas></div></div>
       </div>
     </div>
 
@@ -319,17 +394,30 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
           <div class="card-h">
             <span class="card-t">TRANSACTION INPUT</span>
             <div style="display:flex;gap:8px">
-              <button class="btn btn-c" onclick="fillRandom()" style="padding:4px 10px;font-size:9px">⚄ RANDOM</button>
-              <button class="btn btn-r" onclick="clearAnalyzer()" style="padding:4px 10px;font-size:9px">✕ CLEAR</button>
+              <button class="btn btn-r" onclick="clearAnalyzer()" style="padding:4px 10px;font-size:14px">✕ CLEAR</button>
             </div>
           </div>
           <div class="card-b">
             <div style="margin-bottom:12px">
-              <label class="form-lbl">AMOUNT (₹)</label>
+              <label class="form-lbl" id="amountLabel">AMOUNT</label>
               <input class="form-inp" type="number" id="inpAmount" value="250" step="0.01" style="max-width:200px">
             </div>
-            <div class="form-lbl" style="margin-bottom:8px">PCA FEATURES V1 – V28</div>
-            <div class="fg" id="vInputs"></div>
+            <div class="form-lbl" style="margin-bottom:8px">QUICK EXAMPLES</div>
+            <div class="preset-row">
+              <button class="btn btn-g" type="button" onclick="fillPreset('typical')">Typical purchase</button>
+              <button class="btn btn-r" type="button" onclick="fillPreset('suspicious')">Suspicious example</button>
+            </div>
+            <p class="analyzer-help">V1–V28 are anonymized model features and can be hard to interpret. Use an example, paste values in order, or open the individual fields. Any values you omit stay at 0.</p>
+            <label class="form-lbl" for="featurePaste">PASTE FEATURE VALUES IN ORDER (V1, V2, …, V28)</label>
+            <div class="paste-row">
+              <textarea class="form-inp paste-input" id="featurePaste" placeholder="Example: 0, -0.25, 1.4, 0, …&#10;Separate values with commas, spaces, tabs or new lines."></textarea>
+              <button class="btn btn-c" type="button" onclick="applyFeaturePaste()">FILL FEATURES</button>
+            </div>
+            <div class="paste-status" id="pasteStatus" aria-live="polite">Paste 1–28 values; omitted features will be set to 0.</div>
+            <details class="feature-details">
+              <summary>Enter individual feature values (V1–V28)</summary>
+              <div class="fg" id="vInputs"></div>
+            </details>
             <div style="display:flex;gap:10px;margin-top:4px">
               <button class="btn btn-c" onclick="runAnalyze()" id="analyzeBtn">⬡ ANALYZE</button>
               <button class="btn btn-g" onclick="runBatch()" style="padding:8px 14px">▶ BATCH ×10</button>
@@ -341,20 +429,20 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
             <div class="card-h"><span class="card-t">GAUGE</span></div>
             <div class="card-b" style="text-align:center">
               <canvas id="gaugeChart" width="200" height="130" style="max-width:200px"></canvas>
-              <div id="gaugeLbl" style="font-family:var(--display);font-size:26px;font-weight:900;color:var(--txt3);margin-top:-28px">—</div>
-              <div style="font-family:var(--mono);font-size:8px;color:var(--txt3);letter-spacing:2px">FRAUD PROBABILITY</div>
+              <div id="gaugeLbl" style="font-family:var(--display);font-size:14px;font-weight:700;color:var(--txt2);margin-top:-28px">Waiting for data…</div>
+              <div style="font-family:var(--mono);font-size:14px;color:var(--txt3);letter-spacing:2px">FRAUD PROBABILITY</div>
             </div>
           </div>
           <div class="card" style="margin:0">
             <div class="card-h"><span class="card-t">RESULT</span></div>
             <div class="card-b" id="analyzeResult">
-              <div style="font-family:var(--mono);font-size:10px;color:var(--txt3);text-align:center;padding:16px">Run analysis to see result...</div>
+              <div class="state-message">Enter a transaction and choose Analyze.</div>
             </div>
           </div>
           <div class="card" style="margin:0">
             <div class="card-h"><span class="card-t">BATCH RESULT</span></div>
             <div class="card-b" id="batchResult">
-              <div style="font-family:var(--mono);font-size:10px;color:var(--txt3);text-align:center;padding:8px">Click Batch ×10 to run</div>
+              <div class="state-message">Run a batch to see scored transactions.</div>
             </div>
           </div>
         </div>
@@ -363,35 +451,32 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
 
     <!-- ══ PERFORMANCE ══ -->
     <div class="section" id="sec-performance">
-      <div class="stats-grid" style="grid-template-columns:repeat(5,1fr)">
-        <div class="stat c"><div class="stat-lbl">ROC-AUC</div><div class="stat-val" id="pAuc">—</div><div class="stat-sub">Area Under Curve</div></div>
-        <div class="stat g"><div class="stat-lbl">ACCURACY</div><div class="stat-val" id="pAcc">—</div><div class="stat-sub">Overall correct</div></div>
-        <div class="stat o"><div class="stat-lbl">PRECISION</div><div class="stat-val" id="pPrec">—</div><div class="stat-sub">Of flagged</div></div>
-        <div class="stat r"><div class="stat-lbl">RECALL</div><div class="stat-val" id="pRec">—</div><div class="stat-sub">Fraud caught</div></div>
-        <div class="stat c" style="border-top-color:var(--yellow)"><div class="stat-lbl">F1 SCORE</div><div class="stat-val" id="pF1" style="color:var(--yellow)">—</div><div class="stat-sub">Harmonic mean</div></div>
+      <div class="stats-grid">
+        <div class="stat c"><div class="stat-lbl">ROC-AUC</div><div class="stat-val state-copy" id="pAuc">Waiting for data…</div><div class="stat-sub">Area Under Curve</div></div>
+        <div class="stat g"><div class="stat-lbl">ACCURACY</div><div class="stat-val state-copy" id="pAcc">Waiting for data…</div><div class="stat-sub">Overall correct</div></div>
+        <div class="stat o"><div class="stat-lbl">PRECISION</div><div class="stat-val state-copy" id="pPrec">Waiting for data…</div><div class="stat-sub">Of flagged</div></div>
+        <div class="stat r"><div class="stat-lbl">RECALL</div><div class="stat-val state-copy" id="pRec">Waiting for data…</div><div class="stat-sub">Fraud caught</div></div>
+        <div class="stat c" style="border-top-color:var(--yellow)"><div class="stat-lbl">F1 SCORE</div><div class="stat-val state-copy" id="pF1" style="color:var(--yellow)">Waiting for data…</div><div class="stat-sub">Harmonic mean</div></div>
       </div>
       <div class="g2">
         <div class="card" style="margin:0">
           <div class="card-h"><span class="card-t">METRIC BARS</span></div>
-          <div class="card-b" id="metricBars"></div>
+          <div class="card-b" id="metricBars"><div class="state-message">Waiting for data…</div></div>
         </div>
         <div class="card" style="margin:0">
           <div class="card-h"><span class="card-t">CONFUSION MATRIX</span></div>
           <div class="card-b">
-            <div class="cm-grid">
-              <div class="cm-cell" style="background:rgba(0,255,136,.06);border-color:rgba(0,255,136,.2)"><div class="cm-n" style="color:var(--green)" id="cmTN">—</div><div class="cm-lbl" style="color:var(--txt3)">TRUE NEGATIVE</div><div class="cm-sub" style="color:var(--green)">Correct Legit</div></div>
-              <div class="cm-cell" style="background:rgba(255,149,0,.06);border-color:rgba(255,149,0,.2)"><div class="cm-n" style="color:var(--orange)" id="cmFP">—</div><div class="cm-lbl" style="color:var(--txt3)">FALSE POSITIVE</div><div class="cm-sub" style="color:var(--orange)">False Alarm</div></div>
-              <div class="cm-cell" style="background:rgba(255,45,85,.06);border-color:rgba(255,45,85,.2)"><div class="cm-n" style="color:var(--red)" id="cmFN">—</div><div class="cm-lbl" style="color:var(--txt3)">FALSE NEGATIVE</div><div class="cm-sub" style="color:var(--red)">Missed Fraud</div></div>
-              <div class="cm-cell" style="background:rgba(0,212,255,.06);border-color:rgba(0,212,255,.2)"><div class="cm-n" style="color:var(--cyan)" id="cmTP">—</div><div class="cm-lbl" style="color:var(--txt3)">TRUE POSITIVE</div><div class="cm-sub" style="color:var(--cyan)">Caught Fraud</div></div>
+            <div id="cmState" class="state-message">Waiting for data…</div>
+            <div class="cm-grid" id="cmGrid" hidden>
+              <div class="cm-cell" style="background:rgba(0,255,136,.06);border-color:rgba(0,255,136,.2)"><div class="cm-n" style="color:var(--green)" id="cmTN">0</div><div class="cm-lbl" style="color:var(--txt3)">TRUE NEGATIVE</div><div class="cm-sub" style="color:var(--green)">Correct Legit</div></div>
+              <div class="cm-cell" style="background:rgba(255,149,0,.06);border-color:rgba(255,149,0,.2)"><div class="cm-n" style="color:var(--orange)" id="cmFP">0</div><div class="cm-lbl" style="color:var(--txt3)">FALSE POSITIVE</div><div class="cm-sub" style="color:var(--orange)">False Alarm</div></div>
+              <div class="cm-cell" style="background:rgba(255,45,85,.06);border-color:rgba(255,45,85,.2)"><div class="cm-n" style="color:var(--red)" id="cmFN">0</div><div class="cm-lbl" style="color:var(--txt3)">FALSE NEGATIVE</div><div class="cm-sub" style="color:var(--red)">Missed Fraud</div></div>
+              <div class="cm-cell" style="background:rgba(0,212,255,.06);border-color:rgba(0,212,255,.2)"><div class="cm-n" style="color:var(--cyan)" id="cmTP">0</div><div class="cm-lbl" style="color:var(--txt3)">TRUE POSITIVE</div><div class="cm-sub" style="color:var(--cyan)">Caught Fraud</div></div>
             </div>
           </div>
         </div>
       </div>
-      <div class="g2">
-        <div class="card" style="margin:0">
-          <div class="card-h"><span class="card-t">HOURLY FRAUD TREND</span></div>
-          <div class="card-b"><div style="height:180px"><canvas id="perfChart"></canvas></div></div>
-        </div>
+      <div class="g2" style="grid-template-columns:1fr">
         <div class="card" style="margin:0">
           <div class="card-h"><span class="card-t">THRESHOLD TUNER</span></div>
           <div class="card-b">
@@ -407,36 +492,36 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
 
     <!-- ══ SHAP ══ -->
     <div class="section" id="sec-shap">
-      <div style="background:rgba(0,212,255,.05);border:1px solid rgba(0,212,255,.2);border-radius:6px;padding:10px 14px;font-family:var(--mono);font-size:10px;color:var(--cyan);margin-bottom:16px">
+      <div style="background:rgba(0,212,255,.05);border:1px solid rgba(0,212,255,.2);border-radius:6px;padding:10px 14px;font-family:var(--mono);font-size:14px;color:var(--cyan);margin-bottom:16px">
         ◈ SHAP shows which features push prediction toward FRAUD (red) or LEGITIMATE (blue). Longer bar = stronger influence.
       </div>
       <div class="g3">
         <div class="card" style="margin:0">
           <div class="card-h"><span class="card-t">GLOBAL FEATURE IMPORTANCE</span></div>
-          <div class="card-b"><div style="height:320px"><canvas id="shapChart"></canvas></div></div>
+          <div class="card-b"><div class="chart-frame" style="height:320px"><div id="shapChartState" class="chart-state">Waiting for data…</div><canvas id="shapChart"></canvas></div></div>
         </div>
         <div style="display:flex;flex-direction:column;gap:14px">
           <div class="card" style="margin:0">
             <div class="card-h"><span class="card-t">LEGEND</span></div>
             <div class="card-b">
-              <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><div style="width:32px;height:8px;background:var(--red);border-radius:2px"></div><span style="font-family:var(--mono);font-size:9px;color:var(--txt2)">Pushes → FRAUD</span></div>
-              <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px"><div style="width:32px;height:8px;background:var(--cyan);border-radius:2px"></div><span style="font-family:var(--mono);font-size:9px;color:var(--txt2)">Pushes → LEGIT</span></div>
-              <div style="font-family:var(--mono);font-size:9px;color:var(--txt3);line-height:1.8">V14 and V4 are typically the strongest fraud signals in the Credit Card dataset.</div>
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><div style="width:32px;height:8px;background:var(--red);border-radius:2px"></div><span style="font-family:var(--mono);font-size:14px;color:var(--txt2)">Pushes → FRAUD</span></div>
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px"><div style="width:32px;height:8px;background:var(--cyan);border-radius:2px"></div><span style="font-family:var(--mono);font-size:14px;color:var(--txt2)">Pushes → LEGIT</span></div>
+              <div style="font-family:var(--mono);font-size:14px;color:var(--txt3);line-height:1.8">V14 and V4 are typically the strongest fraud signals in the Credit Card dataset.</div>
             </div>
           </div>
           <div class="card" style="margin:0">
             <div class="card-h"><span class="card-t">TOP INDICATORS</span></div>
-            <div class="card-b" id="topFeatures"></div>
+            <div class="card-b" id="topFeatures"><div class="state-message">Waiting for data…</div></div>
           </div>
         </div>
       </div>
       <div class="card">
         <div class="card-h">
           <span class="card-t">LOCAL EXPLANATION</span>
-          <button class="btn btn-c" onclick="explainRandom()" style="padding:4px 12px;font-size:9px">⚄ EXPLAIN RANDOM</button>
+          <button class="btn btn-c" onclick="explainRandom()" style="padding:4px 12px;font-size:14px">⚄ EXPLAIN RANDOM</button>
         </div>
         <div class="card-b" id="localShap">
-          <div style="font-family:var(--mono);font-size:10px;color:var(--txt3);text-align:center;padding:16px">Click "EXPLAIN RANDOM" to see a local explanation.</div>
+          <div class="state-message">Choose Explain Random to see a local explanation.</div>
         </div>
       </div>
     </div>
@@ -445,25 +530,50 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
 </div><!-- end .main -->
 
 <script>
-const API = 'http://localhost:8000';
+const API = ['http:', 'https:'].includes(window.location.protocol)
+  ? window.location.origin
+  : window.location.protocol === 'file:' ? 'http://localhost:8000' : window.location.origin;
+const CURRENCY_SYMBOL = '$';
+document.getElementById('currencyIcon').textContent = CURRENCY_SYMBOL;
+document.getElementById('amountLabel').textContent = `AMOUNT (${CURRENCY_SYMBOL})`;
 
 // ── utils ──────────────────────────────────────────────────
-async function get(path){ try{ const r=await fetch(API+path); return r.ok?await r.json():null; }catch(e){ return null; } }
-async function post(path,body){ try{ const r=await fetch(API+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}); return r.ok?await r.json():null; }catch(e){ return null; } }
-function fc(n){ if(n>=1e6) return '₹'+(n/1e6).toFixed(1)+'M'; if(n>=1e3) return '₹'+(n/1e3).toFixed(1)+'K'; return '₹'+n.toFixed(0); }
+async function apiRequest(path,options={}){
+  try{
+    const response=await fetch(API+path,options);
+    if(!response.ok){ console.error(`${options.method||'GET'} ${API+path} failed with HTTP ${response.status}`); return null; }
+    return await response.json();
+  }catch(error){ console.error(`${options.method||'GET'} ${API+path} failed`,error); return null; }
+}
+async function get(path){ return apiRequest(path); }
+async function post(path,body){ return apiRequest(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}); }
+function fc(n){ if(n>=1e6) return CURRENCY_SYMBOL+(n/1e6).toFixed(1)+'M'; if(n>=1e3) return CURRENCY_SYMBOL+(n/1e3).toFixed(1)+'K'; return CURRENCY_SYMBOL+n.toFixed(0); }
 function fp(n){ return (n*100).toFixed(2)+'%'; }
+function showState(id,message,isError=false){ const el=document.getElementById(id); if(el) el.innerHTML=`<div class="state-message${isError?' error':''}">${message}</div>`; }
+function setValueState(id,message,isError=false){ const el=document.getElementById(id); if(!el) return; el.textContent=message; el.classList.add('state-copy'); if(isError) el.classList.add('error-copy'); else el.classList.remove('error-copy'); }
+function setValue(id,value){ const el=document.getElementById(id); if(!el) return; el.textContent=value; el.classList.remove('state-copy','error-copy'); }
 function bb(isFraud){ return isFraud?`<span class="badge b-fraud">⚠ FRAUD</span>`:`<span class="badge b-legit">✓ LEGIT</span>`; }
 function rb(lvl){ const m={HIGH:'b-h',MEDIUM:'b-m',LOW:'b-l'}; return `<span class="badge ${m[lvl]||'b-l'}">${lvl}</span>`; }
 function pb(prob){ const p=(prob*100).toFixed(0); const c=prob>.7?'#ff2d55':prob>.4?'#ff9500':'#00ff88'; return `<span style="display:inline-block;width:60px;height:4px;background:#152840;border-radius:2px;vertical-align:middle;margin-right:4px;overflow:hidden"><span style="display:block;height:100%;width:${p}%;background:${c};border-radius:2px"></span></span>${p}%`; }
 function ta(ts){ const d=Math.floor((Date.now()-new Date(ts))/1000); if(d<60) return d+'s'; if(d<3600) return Math.floor(d/60)+'m'; return Math.floor(d/3600)+'h'; }
 
 // ── navigation ─────────────────────────────────────────────
-const titles = { overview:'OVERVIEW / DASHBOARD', monitor:'LIVE MONITOR', analyzer:'TRANSACTION ANALYZER', performance:'MODEL PERFORMANCE', shap:'SHAP EXPLAINABILITY' };
+const titles = { overview:'DASHBOARD', monitor:'LIVE MONITOR', analyzer:'ANALYZER', performance:'MODEL', shap:'SHAP EXPLAINABILITY' };
+const routeSections = { dash:'overview', ana:'analyzer', mod:'performance' };
+function navigateTo(route, updateHash=true){
+  if(!routeSections[route]) route='dash';
+  const section=routeSections[route];
+  const btn=document.getElementById(`nav-${route}`);
+  showSection(section,btn);
+  document.getElementById('topTitle').textContent=({dash:'DASHBOARD',ana:'ANALYZER',mod:'MODEL'})[route];
+  if(updateHash && location.hash!==`#${route}`) history.replaceState(null,'',`#${route}`);
+}
+window.addEventListener('hashchange',()=>navigateTo(location.hash.slice(1),false));
 function showSection(id, btn){
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('sec-'+id).classList.add('active');
-  btn.classList.add('active');
+  if(btn) btn.classList.add('active');
   document.getElementById('topTitle').textContent = titles[id];
   if(id==='overview') loadOverview();
   if(id==='monitor') startMonitor();
@@ -479,7 +589,13 @@ setInterval(()=>{ document.getElementById('clock').textContent=new Date().toLoca
 async function checkHealth(){
   const d=await get('/health');
   const el=document.getElementById('apiStatus');
-  el.innerHTML=d&&d.status==='online'?'<span style="color:var(--green)">● API ONLINE</span>':'<span style="color:var(--red)">● API OFFLINE</span>';
+  if(!d||d.status!=='online'){
+    el.dataset.state='error';
+    el.textContent='API unreachable';
+    return;
+  }
+  el.dataset.state=d.model_loaded?'online':'demo';
+  el.textContent=d.model_loaded?'API online · model loaded':'API online · demo mode';
 }
 checkHealth(); setInterval(checkHealth,10000);
 
@@ -487,46 +603,55 @@ checkHealth(); setInterval(checkHealth,10000);
 function lineChart(id, labels, datasets){
   const ctx=document.getElementById(id); if(!ctx) return null;
   if(ctx._c) ctx._c.destroy();
-  ctx._c=new Chart(ctx,{ type:'line', data:{labels,datasets}, options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{labels:{color:'#6a9bbf',font:{family:'Share Tech Mono',size:9}}}}, scales:{ x:{grid:{color:'#15284055'},ticks:{color:'#6a9bbf',font:{family:'Share Tech Mono',size:8}}}, y:{grid:{color:'#15284055'},ticks:{color:'#6a9bbf',font:{family:'Share Tech Mono',size:8}}} } } });
+  ctx._c=new Chart(ctx,{ type:'line', data:{labels,datasets}, options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{labels:{color:'#6a9bbf',font:{family:'system-ui',size:14}}}}, scales:{ x:{grid:{color:'#15284055'},ticks:{color:'#6a9bbf',font:{family:'system-ui',size:14}}}, y:{grid:{color:'#15284055'},ticks:{color:'#6a9bbf',font:{family:'system-ui',size:14}}} } } });
   return ctx._c;
 }
 function barChart(id, labels, datasets, opts={}){
   const ctx=document.getElementById(id); if(!ctx) return null;
   if(ctx._c) ctx._c.destroy();
-  ctx._c=new Chart(ctx,{ type:'bar', data:{labels,datasets}, options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ x:{grid:{color:'#15284055'},ticks:{color:'#6a9bbf',font:{family:'Share Tech Mono',size:8}}}, y:{grid:{color:'#15284055'},ticks:{color:'#6a9bbf',font:{family:'Share Tech Mono',size:8}}} }, ...opts } });
+  ctx._c=new Chart(ctx,{ type:'bar', data:{labels,datasets}, options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ x:{grid:{color:'#15284055'},ticks:{color:'#6a9bbf',font:{family:'system-ui',size:14}}}, y:{grid:{color:'#15284055'},ticks:{color:'#6a9bbf',font:{family:'system-ui',size:14}}} }, ...opts } });
   return ctx._c;
 }
 function doughnut(id, labels, data, colors){
   const ctx=document.getElementById(id); if(!ctx) return;
   if(ctx._c) ctx._c.destroy();
-  ctx._c=new Chart(ctx,{ type:'doughnut', data:{labels,datasets:[{data,backgroundColor:colors,borderWidth:0}]}, options:{ responsive:true, maintainAspectRatio:false, cutout:'70%', plugins:{legend:{position:'bottom',labels:{color:'#6a9bbf',font:{family:'Share Tech Mono',size:9},padding:10}}} } });
+  ctx._c=new Chart(ctx,{ type:'doughnut', data:{labels,datasets:[{data,backgroundColor:colors,borderWidth:0}]}, options:{ responsive:true, maintainAspectRatio:false, cutout:'70%', plugins:{legend:{position:'bottom',labels:{color:'#6a9bbf',font:{family:'system-ui',size:14},padding:10}}} } });
 }
 
 // ══════════════════════════════════════════════════════════
 // OVERVIEW
 // ══════════════════════════════════════════════════════════
 async function loadOverview(){
-  const d=await get('/stats/summary'); if(!d) return;
-  document.getElementById('ovTotal').textContent=d.total_transactions.toLocaleString();
-  document.getElementById('ovFraud').textContent=d.fraud_detected.toLocaleString();
-  document.getElementById('ovFraudPct').textContent=fp(d.fraud_rate)+' fraud rate';
-  document.getElementById('ovSaved').textContent=fc(d.amount_saved);
-  document.getElementById('ovMs').textContent=d.avg_response_ms+'ms';
-  const hrs=d.hourly_stats.map(h=>h.hour.slice(0,5));
-  lineChart('volChart',hrs,[
-    {label:'Transactions',data:d.hourly_stats.map(h=>h.transactions),borderColor:'#00d4ff',backgroundColor:'rgba(0,212,255,.07)',tension:.4,fill:true,pointRadius:0},
-    {label:'Fraud',data:d.hourly_stats.map(h=>h.fraud),borderColor:'#ff2d55',backgroundColor:'rgba(255,45,85,.05)',tension:.4,fill:true,pointRadius:0}
-  ]);
-  doughnut('donutChart',['Legitimate','Fraud'],[d.total_transactions-d.fraud_detected,d.fraud_detected],['#00d4ff','#ff2d55']);
+  const d=await get('/stats/summary');
+  if(!d){
+    ['ovTotal','ovFraud','ovSaved','ovMs','ovFraudPct'].forEach(id=>setValueState(id,'API unreachable',true));
+    document.getElementById('donutState').textContent='API unreachable';
+    document.getElementById('donutState').classList.add('error');
+    await loadOverviewTxns();
+    return;
+  }
+  setValue('ovTotal',d.total_transactions.toLocaleString());
+  setValue('ovFraud',d.fraud_detected.toLocaleString());
+  setValue('ovFraudPct',fp(d.fraud_rate)+' fraud rate');
+  setValue('ovSaved',fc(d.amount_saved));
+  setValue('ovMs',d.avg_response_ms+'ms');
+  if(d.total_transactions>0){
+    document.getElementById('donutState').hidden=true;
+    doughnut('donutChart',['Legitimate','Fraud'],[d.total_transactions-d.fraud_detected,d.fraud_detected],['#00d4ff','#ff5875']);
+  } else {
+    document.getElementById('donutState').hidden=false;
+    document.getElementById('donutState').textContent='Waiting for scored transactions…';
+  }
   loadOverviewTxns();
 }
 
 async function loadOverviewTxns(){
-  document.getElementById('ovTxnWrap').innerHTML='<div style="padding:20px;text-align:center"><div class="spin"></div></div>';
+  showState('ovTxnWrap','Waiting for data…');
   const d=await get('/stream/live');
-  if(!d){ document.getElementById('ovTxnWrap').innerHTML='<div style="padding:16px;font-family:var(--mono);font-size:10px;color:var(--red);text-align:center">API offline — run: uvicorn api.main:app --port 8000</div>'; return; }
-  const rows=d.transactions.map(t=>`<tr><td style="color:var(--cyan)">${t.id}</td><td>${t.merchant}</td><td>${t.location}</td><td>₹${t.amount.toLocaleString()}</td><td>${pb(t.fraud_probability)}</td><td>${rb(t.risk_level)}</td><td>${bb(t.is_fraud)}</td><td style="color:var(--txt3)">${ta(t.timestamp)}</td></tr>`).join('');
-  document.getElementById('ovTxnWrap').innerHTML=`<div style="overflow-x:auto"><table class="tbl"><thead><tr><th>TXN ID</th><th>MERCHANT</th><th>LOCATION</th><th>AMOUNT</th><th>PROB</th><th>RISK</th><th>STATUS</th><th>TIME</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  if(!d){ showState('ovTxnWrap','API unreachable. Check the API server and try again.',true); return; }
+  if(!d.transactions?.length){ showState('ovTxnWrap',d.demo_mode?'No scored transactions are available in demo mode.':'Waiting for scored transactions…'); return; }
+  const rows=d.transactions.map(t=>`<tr><td style="color:var(--cyan)">${t.id}</td><td>${t.merchant}</td><td>${t.location}</td><td>${CURRENCY_SYMBOL}${t.amount.toLocaleString()}</td><td>${pb(t.fraud_probability)}</td><td>${rb(t.risk_level)}</td><td>${bb(t.is_fraud)}</td><td style="color:var(--txt3)">${ta(t.timestamp)}</td></tr>`).join('');
+  document.getElementById('ovTxnWrap').innerHTML=`<div class="table-scroll"><table class="tbl"><thead><tr><th>TXN ID</th><th>MERCHANT · SIMULATED</th><th>LOCATION · SIMULATED</th><th>AMOUNT</th><th>PROB</th><th>RISK</th><th>STATUS</th><th>TIME</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 
 // ══════════════════════════════════════════════════════════
@@ -534,6 +659,7 @@ async function loadOverviewTxns(){
 // ══════════════════════════════════════════════════════════
 let paused=false, mTotal=0, mFraud=0, mHigh=0, monitorStarted=false;
 const trendLabels=[], trendData=[];
+const monitorSeenIds=new Set(), monitorTransactions=[];
 let trendChart=null;
 
 function togglePause(){ paused=!paused; document.getElementById('pauseBtn').textContent=paused?'▶ RESUME':'⏸ PAUSE'; }
@@ -542,8 +668,16 @@ function startMonitor(){ if(!monitorStarted){ monitorStarted=true; fetchMonitor(
 
 async function fetchMonitor(){
   if(paused) return;
-  const d=await get('/stream/live'); if(!d) return;
-  const txns=d.transactions.slice(0,8);
+  const d=await get('/stream/live');
+  if(!d){ showState('liveFeed','API unreachable. Check the API server and try again.',true); document.getElementById('trendState').textContent='API unreachable'; document.getElementById('trendState').classList.add('error'); return; }
+  const txns=(d.transactions||[]).filter(t=>!monitorSeenIds.has(t.id));
+  if(!d.transactions?.length){
+    document.getElementById('trendState').hidden=false;
+    document.getElementById('trendState').classList.remove('error');
+    document.getElementById('trendState').textContent=d.demo_mode?'No scored transactions are available in demo mode.':'Waiting for scored transactions…';
+    if(!monitorTransactions.length) showState('liveFeed',d.demo_mode?'No scored transactions are available in demo mode.':'Waiting for scored transactions…');
+  }
+  txns.forEach(t=>{ monitorSeenIds.add(t.id); monitorTransactions.push(t); });
   mTotal+=txns.length; const nf=txns.filter(t=>t.is_fraud).length; const nh=txns.filter(t=>t.risk_level==='HIGH').length;
   mFraud+=nf; mHigh+=nh;
   document.getElementById('mTotal').textContent=mTotal.toLocaleString();
@@ -556,14 +690,18 @@ async function fetchMonitor(){
   document.getElementById('legitRing').style.strokeDashoffset=c-((100-fp)/100)*c;
   document.getElementById('rFraud').textContent=fp.toFixed(1)+'%';
   document.getElementById('rLegit').textContent=(100-fp).toFixed(1)+'%';
-  const now=new Date().toLocaleTimeString('en',{hour12:false});
-  trendLabels.push(now); trendData.push(+(txns.reduce((s,t)=>s+t.fraud_probability,0)/txns.length*100).toFixed(1));
-  if(trendLabels.length>20){ trendLabels.shift(); trendData.shift(); }
-  if(!trendChart){
-    trendChart=lineChart('trendChart',trendLabels,[{label:'Avg Fraud %',data:trendData,borderColor:'#ff2d55',backgroundColor:'rgba(255,45,85,.07)',tension:.4,fill:true,pointRadius:2,pointBackgroundColor:'#ff2d55'}]);
-  } else { trendChart.data.labels=trendLabels; trendChart.data.datasets[0].data=trendData; trendChart.update('none'); }
-  document.getElementById('liveFeed').innerHTML=txns.map(t=>`<div class="feed-item ${t.is_fraud?'fraud-row':''}"><span style="color:var(--cyan)">${t.id}</span><span>${t.merchant}<br><span style="color:var(--txt3);font-size:8px">${t.location}</span></span><span>₹${t.amount.toLocaleString()}</span><span>${pb(t.fraud_probability)}</span><span>${bb(t.is_fraud)}</span><span style="color:var(--txt3)">${ta(t.timestamp)}</span></div>`).join('');
-  txns.filter(t=>t.is_fraud).forEach(t=>{ const p=document.getElementById('alertPanel'); const noAlerts=p.querySelector('[data-no-alerts]'); if(noAlerts) noAlerts.remove(); const el=document.createElement('div'); el.className='alert-item'; el.innerHTML=`⚠ <strong>${t.id}</strong> — ₹${t.amount.toLocaleString()} at ${t.merchant} — ${(t.fraud_probability*100).toFixed(1)}%`; p.prepend(el); if(p.children.length>7) p.lastChild.remove(); });
+  if(txns.length){
+    document.getElementById('trendState').hidden=true;
+    document.getElementById('trendState').classList.remove('error');
+    const now=new Date().toLocaleTimeString('en',{hour12:false});
+    trendLabels.push(now); trendData.push(+(txns.reduce((s,t)=>s+t.fraud_probability,0)/txns.length*100).toFixed(1));
+    if(trendLabels.length>20){ trendLabels.shift(); trendData.shift(); }
+    if(!trendChart){
+      trendChart=lineChart('trendChart',trendLabels,[{label:'Avg Fraud %',data:trendData,borderColor:'#ff2d55',backgroundColor:'rgba(255,45,85,.07)',tension:.4,fill:true,pointRadius:2,pointBackgroundColor:'#ff2d55'}]);
+    } else { trendChart.data.labels=trendLabels; trendChart.data.datasets[0].data=trendData; trendChart.update('none'); }
+  }
+  if(monitorTransactions.length) document.getElementById('liveFeed').innerHTML=monitorTransactions.slice(-8).reverse().map(t=>`<div class="feed-item ${t.is_fraud?'fraud-row':''}"><span style="color:var(--cyan)">${t.id}</span><span>${t.merchant}<br><span style="color:var(--txt3);font-size:14px">${t.location} · simulated</span></span><span>${CURRENCY_SYMBOL}${t.amount.toLocaleString()}</span><span>${pb(t.fraud_probability)}</span><span>${bb(t.is_fraud)}</span><span style="color:var(--txt3)">${ta(t.timestamp)}</span></div>`).join('');
+  txns.filter(t=>t.is_fraud).forEach(t=>{ const p=document.getElementById('alertPanel'); const noAlerts=p.querySelector('[data-no-alerts]'); if(noAlerts) noAlerts.remove(); const el=document.createElement('div'); el.className='alert-item'; el.innerHTML=`⚠ <strong>${t.id}</strong> — ${CURRENCY_SYMBOL}${t.amount.toLocaleString()} at ${t.merchant} — ${(t.fraud_probability*100).toFixed(1)}%`; p.prepend(el); if(p.children.length>7) p.lastChild.remove(); });
 }
 
 // ══════════════════════════════════════════════════════════
@@ -572,22 +710,46 @@ async function fetchMonitor(){
 function buildVInputs(){
   if(document.getElementById('vInputs').children.length>0) return;
   let h='';
-  for(let i=1;i<=28;i++) h+=`<div><label class="form-lbl">V${i}</label><input class="form-inp" type="number" id="V${i}" value="0" step="0.001" style="padding:5px 8px;font-size:10px"></div>`;
+  for(let i=1;i<=28;i++) h+=`<div><label class="form-lbl">V${i}</label><input class="form-inp" type="number" id="V${i}" value="0" step="0.001" style="padding:5px 8px;font-size:14px"></div>`;
   document.getElementById('vInputs').innerHTML=h;
 }
 
-function fillRandom(){
+function fillPreset(kind){
   buildVInputs();
-  const fraud=Math.random()<.3;
-  document.getElementById('inpAmount').value=fraud?(Math.random()*400+10).toFixed(2):(Math.random()*3000+100).toFixed(2);
-  for(let i=1;i<=28;i++){ const el=document.getElementById('V'+i); if(el) el.value=(Math.random()*6-3).toFixed(4); }
-  if(fraud){ document.getElementById('V14').value=(-7+Math.random()*1.5).toFixed(4); document.getElementById('V4').value=(4+Math.random()*2).toFixed(4); }
+  for(let i=1;i<=28;i++) document.getElementById('V'+i).value='0';
+  if(kind==='suspicious'){
+    document.getElementById('inpAmount').value='20';
+    document.getElementById('V1').value='-3';
+    document.getElementById('V3').value='3';
+    document.getElementById('V14').value='-3';
+  }else{
+    document.getElementById('inpAmount').value='45';
+  }
+  document.getElementById('pasteStatus').textContent=`${kind==='suspicious'?'Suspicious example':'Typical purchase'} loaded. You can edit the amount or individual features.`;
+  document.getElementById('pasteStatus').classList.remove('error');
+}
+
+function applyFeaturePaste(){
+  const raw=document.getElementById('featurePaste').value.trim();
+  const status=document.getElementById('pasteStatus');
+  if(!raw){ status.textContent='Paste at least one number first.'; status.classList.add('error'); return; }
+  const tokens=raw.split(/[\s,;]+/).filter(Boolean);
+  if(tokens.length>28){ status.textContent='Please paste no more than 28 values (V1 through V28).'; status.classList.add('error'); return; }
+  const values=tokens.map(Number);
+  if(values.some(value=>!Number.isFinite(value))){ status.textContent='Values must be numbers separated by commas, spaces, tabs or new lines.'; status.classList.add('error'); return; }
+  buildVInputs();
+  for(let i=1;i<=28;i++) document.getElementById('V'+i).value=String(values[i-1]??0);
+  status.textContent=`Loaded ${values.length} values in order. Remaining features were set to 0.`;
+  status.classList.remove('error');
 }
 
 function clearAnalyzer(){
   document.getElementById('inpAmount').value='0';
   for(let i=1;i<=28;i++){ const el=document.getElementById('V'+i); if(el) el.value='0'; }
-  document.getElementById('analyzeResult').innerHTML='<div style="font-family:var(--mono);font-size:10px;color:var(--txt3);text-align:center;padding:16px">Run analysis to see result...</div>';
+  document.getElementById('featurePaste').value='';
+  document.getElementById('pasteStatus').textContent='Paste 1–28 values; omitted features will be set to 0.';
+  document.getElementById('pasteStatus').classList.remove('error');
+  document.getElementById('analyzeResult').innerHTML='<div style="font-family:var(--mono);font-size:14px;color:var(--txt3);text-align:center;padding:16px">Run analysis to see result...</div>';
   updateGauge(null);
 }
 
@@ -598,7 +760,7 @@ function updateGauge(prob){
   const color=p>.7?'#ff2d55':p>.4?'#ff9500':'#00ff88';
   ctx._c=new Chart(ctx,{ type:'doughnut', data:{datasets:[{data:[p*100,100-p*100],backgroundColor:[color,'#152840'],borderWidth:0}]}, options:{ responsive:false, circumference:180, rotation:-90, cutout:'74%', plugins:{legend:{display:false},tooltip:{enabled:false}} } });
   const lbl=document.getElementById('gaugeLbl');
-  lbl.textContent=prob===null?'—':(p*100).toFixed(1)+'%';
+  lbl.textContent=prob===null?'Waiting for data…':(p*100).toFixed(1)+'%';
   lbl.style.color=prob===null?'var(--txt3)':color;
 }
 updateGauge(null);
@@ -609,58 +771,73 @@ async function runAnalyze(){
   for(let i=1;i<=28;i++) payload['V'+i]=parseFloat(document.getElementById('V'+i)?.value)||0;
   const r=await post('/predict',payload);
   btn.textContent='⬡ ANALYZE'; btn.disabled=false;
-  if(!r){ document.getElementById('analyzeResult').innerHTML='<div style="color:var(--red);font-family:var(--mono);font-size:10px">API not responding.</div>'; return; }
+  if(!r){ showState('analyzeResult','API unreachable. Check the API server and try again.',true); return; }
   updateGauge(r.fraud_probability);
   const color=r.is_fraud?'var(--red)':'var(--green)';
   document.getElementById('analyzeResult').innerHTML=`
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
       <div style="font-size:36px">${r.is_fraud?'⚠':'✓'}</div>
       <div><div style="font-family:var(--display);font-size:15px;font-weight:900;color:${color}">${r.is_fraud?'FRAUD DETECTED':'TRANSACTION CLEAR'}</div>
-      <div style="font-family:var(--mono);font-size:9px;color:var(--txt3)">${(r.fraud_probability*100).toFixed(2)}% confidence</div></div>
+      <div style="font-family:var(--mono);font-size:14px;color:var(--txt3)">${(r.fraud_probability*100).toFixed(2)}% confidence</div></div>
     </div>
-    <div class="mrow"><span class="mname">Amount</span><span class="mval">₹${(r.amount||payload.Amount).toLocaleString()}</span></div>
+    <div class="mrow"><span class="mname">Amount</span><span class="mval">${CURRENCY_SYMBOL}${(r.amount||payload.Amount).toLocaleString()}</span></div>
     <div class="mrow"><span class="mname">Fraud Prob</span><span class="mval" style="color:${color}">${(r.fraud_probability*100).toFixed(2)}%</span></div>
     <div class="mrow"><span class="mname">Risk Level</span><span>${rb(r.risk_level)}</span></div>
     <div class="mrow"><span class="mname">Verdict</span><span>${bb(r.is_fraud)}</span></div>
-    ${r.demo_mode?'<div style="margin-top:8px;font-family:var(--mono);font-size:8px;color:var(--txt3)">⚠ Demo mode — model.pkl not loaded</div>':''}`;
+    ${r.demo_mode?'<div style="margin-top:8px;font-family:var(--mono);font-size:14px;color:var(--txt3)">⚠ Demo mode — model.pkl not loaded</div>':''}`;
 }
 
 async function runBatch(){
-  document.getElementById('batchResult').innerHTML='<div style="text-align:center;padding:12px"><div class="spin"></div></div>';
+  showState('batchResult','Scoring batch…');
   const transactions=Array.from({length:10},()=>{ const o={Amount:Math.random()*3000+10}; for(let i=1;i<=28;i++) o['V'+i]=+(Math.random()*6-3).toFixed(4); return o; });
   const r=await post('/predict/batch',{transactions});
-  if(!r){ document.getElementById('batchResult').innerHTML='<div style="color:var(--red);font-family:var(--mono);font-size:10px">API offline</div>'; return; }
+  if(!r){ showState('batchResult','API unreachable. Check the API server and try again.',true); return; }
   document.getElementById('batchResult').innerHTML=`
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
-      <div style="text-align:center;padding:8px;background:var(--bg2);border-radius:5px;border:1px solid var(--border)"><div style="font-family:var(--display);font-size:18px;color:var(--cyan)">${r.total}</div><div style="font-family:var(--mono);font-size:8px;color:var(--txt3)">TOTAL</div></div>
-      <div style="text-align:center;padding:8px;background:var(--bg2);border-radius:5px;border:1px solid rgba(255,45,85,.3)"><div style="font-family:var(--display);font-size:18px;color:var(--red)">${r.fraud_count}</div><div style="font-family:var(--mono);font-size:8px;color:var(--txt3)">FRAUD</div></div>
-      <div style="text-align:center;padding:8px;background:var(--bg2);border-radius:5px;border:1px solid rgba(0,255,136,.2)"><div style="font-family:var(--display);font-size:18px;color:var(--green)">${fp(r.fraud_rate)}</div><div style="font-family:var(--mono);font-size:8px;color:var(--txt3)">RATE</div></div>
+      <div style="text-align:center;padding:8px;background:var(--bg2);border-radius:5px;border:1px solid var(--border)"><div style="font-family:var(--display);font-size:18px;color:var(--cyan)">${r.total}</div><div style="font-family:var(--mono);font-size:14px;color:var(--txt3)">TOTAL</div></div>
+      <div style="text-align:center;padding:8px;background:var(--bg2);border-radius:5px;border:1px solid rgba(255,45,85,.3)"><div style="font-family:var(--display);font-size:18px;color:var(--red)">${r.fraud_count}</div><div style="font-family:var(--mono);font-size:14px;color:var(--txt3)">FRAUD</div></div>
+      <div style="text-align:center;padding:8px;background:var(--bg2);border-radius:5px;border:1px solid rgba(0,255,136,.2)"><div style="font-family:var(--display);font-size:18px;color:var(--green)">${fp(r.fraud_rate)}</div><div style="font-family:var(--mono);font-size:14px;color:var(--txt3)">RATE</div></div>
     </div>
-    <div style="font-family:var(--mono);font-size:9px">${r.results.map((x,i)=>`<span style="display:inline-block;margin:2px;padding:2px 6px;border-radius:3px;background:${x.is_fraud?'rgba(255,45,85,.15)':'rgba(0,255,136,.07)'}">T${i+1}:${(x.fraud_probability*100).toFixed(0)}%</span>`).join('')}</div>`;
+    <div style="font-family:var(--mono);font-size:14px">${r.results.map((x,i)=>`<span style="display:inline-block;margin:2px;padding:2px 6px;border-radius:3px;background:${x.is_fraud?'rgba(255,45,85,.15)':'rgba(0,255,136,.07)'}">T${i+1}:${(x.fraud_probability*100).toFixed(0)}%</span>`).join('')}</div>`;
 }
 
 // ══════════════════════════════════════════════════════════
 // PERFORMANCE
 // ══════════════════════════════════════════════════════════
 async function loadPerformance(){
-  const d=await get('/stats/summary'); if(!d) return;
-  document.getElementById('pAuc').textContent=d.roc_auc.toFixed(4);
-  document.getElementById('pAcc').textContent=d.model_accuracy.toFixed(4);
-  document.getElementById('pPrec').textContent=d.precision.toFixed(3);
-  document.getElementById('pRec').textContent=d.recall.toFixed(3);
-  document.getElementById('pF1').textContent=d.f1_score.toFixed(3);
+  const d=await get('/stats/summary');
+  if(!d){
+    ['pAuc','pAcc','pPrec','pRec','pF1'].forEach(id=>setValueState(id,'API unreachable',true));
+    showState('metricBars','API unreachable. Check the API server and try again.',true);
+    document.getElementById('cmGrid').hidden=true;
+    document.getElementById('cmState').hidden=false;
+    document.getElementById('cmState').textContent='API unreachable';
+    document.getElementById('cmState').classList.add('error');
+    return;
+  }
+  if(d.source==='unavailable'){
+    ['pAuc','pAcc','pPrec','pRec','pF1'].forEach(id=>setValueState(id,'Metrics unavailable'));
+    showState('metricBars','No training metrics available. Rerun the training notebook to create model/metrics.json.');
+    document.getElementById('cmGrid').hidden=true;
+    document.getElementById('cmState').hidden=false;
+    document.getElementById('cmState').textContent='Confusion counts unavailable until test metrics are saved.';
+    document.getElementById('cmState').classList.remove('error');
+    return;
+  }
+  setValue('pAuc',d.roc_auc.toFixed(4));
+  setValue('pAcc',d.model_accuracy.toFixed(4));
+  setValue('pPrec',d.precision.toFixed(3));
+  setValue('pRec',d.recall.toFixed(3));
+  setValue('pF1',d.f1_score.toFixed(3));
   const metrics=[{n:'ROC-AUC',v:d.roc_auc,c:'#00d4ff'},{n:'Accuracy',v:d.model_accuracy,c:'#00ff88'},{n:'Precision',v:d.precision,c:'#ff9500'},{n:'Recall',v:d.recall,c:'#ff2d55'},{n:'F1 Score',v:d.f1_score,c:'#ffd60a'}];
-  document.getElementById('metricBars').innerHTML=metrics.map(m=>`<div style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;margin-bottom:5px"><span style="font-family:var(--mono);font-size:10px;color:var(--txt2)">${m.n}</span><span style="font-family:var(--display);font-size:12px;font-weight:700;color:${m.c}">${(m.v*100).toFixed(2)}%</span></div><div class="ptrack" style="margin:0;height:7px"><div class="pfill" style="width:${m.v*100}%;background:${m.c}"></div></div></div>`).join('');
+  document.getElementById('metricBars').innerHTML=metrics.map(m=>`<div style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;margin-bottom:5px"><span style="font-family:var(--mono);font-size:14px;color:var(--txt2)">${m.n}</span><span style="font-family:var(--display);font-size:14px;font-weight:700;color:${m.c}">${(m.v*100).toFixed(2)}%</span></div><div class="ptrack" style="margin:0;height:7px"><div class="pfill" style="width:${m.v*100}%;background:${m.c}"></div></div></div>`).join('');
   const tot=d.total_transactions, tp=Math.round(d.fraud_detected*d.recall), fp2=Math.round(d.fraud_detected*(1-d.precision)), fn=d.fraud_detected-tp, tn=tot-tp-fp2-fn;
   document.getElementById('cmTN').textContent=tn.toLocaleString();
   document.getElementById('cmFP').textContent=fp2.toLocaleString();
   document.getElementById('cmFN').textContent=fn.toLocaleString();
   document.getElementById('cmTP').textContent=tp.toLocaleString();
-  const hrs=d.hourly_stats.map(h=>h.hour.slice(0,5));
-  lineChart('perfChart',hrs,[
-    {label:'Transactions',data:d.hourly_stats.map(h=>h.transactions),borderColor:'#00d4ff',backgroundColor:'rgba(0,212,255,.06)',tension:.4,fill:true,pointRadius:0},
-    {label:'Fraud',data:d.hourly_stats.map(h=>h.fraud),borderColor:'#ff2d55',backgroundColor:'rgba(255,45,85,.05)',tension:.4,fill:true,pointRadius:0}
-  ]);
+  document.getElementById('cmGrid').hidden=false;
+  document.getElementById('cmState').hidden=true;
   updateThresh(0.5);
 }
 
@@ -672,17 +849,34 @@ function updateThresh(v){
     <div class="mrow"><span class="mname">Precision</span><span class="mval">${prec}</span></div>
     <div class="mrow"><span class="mname">Recall</span><span class="mval" style="color:var(--orange)">${rec}</span></div>
     <div class="mrow"><span class="mname">F1 Score</span><span class="mval" style="color:var(--yellow)">${f1}</span></div>
-    <div class="mrow"><span class="mname">Recommendation</span><span style="font-family:var(--mono);font-size:9px;color:${+v>.6?'var(--orange)':+v<.3?'var(--red)':'var(--green)'}">${+v>.6?'High precision, may miss fraud':+v<.3?'High recall, many false alarms':'Balanced — recommended'}</span></div>`;
+    <div class="mrow"><span class="mname">Recommendation</span><span style="font-family:var(--mono);font-size:14px;color:${+v>.6?'var(--orange)':+v<.3?'var(--red)':'var(--green)'}">${+v>.6?'High precision, may miss fraud':+v<.3?'High recall, many false alarms':'Balanced — recommended'}</span></div>`;
 }
 
 // ══════════════════════════════════════════════════════════
 // SHAP
 // ══════════════════════════════════════════════════════════
 async function loadShap(){
-  const d=await get('/shap/global'); if(!d) return;
+  const d=await get('/shap/global');
+  if(!d){
+    showState('topFeatures','API unreachable. Check the API server and try again.',true);
+    document.getElementById('shapChartState').hidden=false;
+    document.getElementById('shapChartState').textContent='API unreachable';
+    document.getElementById('shapChartState').classList.add('error');
+    return;
+  }
   const feats=d.feature_importance.slice(0,15);
+  if(!feats.length){
+    const message='No SHAP feature data is available.';
+    showState('topFeatures',message);
+    document.getElementById('shapChartState').hidden=false;
+    document.getElementById('shapChartState').textContent=message;
+    document.getElementById('shapChartState').classList.remove('error');
+    return;
+  }
+  document.getElementById('shapChartState').hidden=true;
+  document.getElementById('shapChartState').classList.remove('error');
   barChart('shapChart',feats.map(f=>f.feature),[{data:feats.map(f=>f.importance),backgroundColor:feats.map((_,i)=>i<5?'rgba(255,45,85,.7)':i<10?'rgba(255,149,0,.6)':'rgba(0,212,255,.5)'),borderWidth:0,borderRadius:3}],{indexAxis:'y'});
-  document.getElementById('topFeatures').innerHTML=feats.slice(0,7).map((f,i)=>`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(21,40,64,.4)"><span style="font-family:var(--display);font-size:10px;color:var(--txt3);width:16px">#${i+1}</span><span style="font-family:var(--mono);font-size:11px;color:var(--cyan);width:36px">${f.feature}</span><div class="ptrack" style="margin:0;flex:1"><div class="pfill" style="width:${(f.importance/feats[0].importance*100).toFixed(0)}%;background:${i<3?'#ff2d55':'#00d4ff'}"></div></div><span style="font-family:var(--mono);font-size:9px;color:var(--txt3);width:46px;text-align:right">${f.importance.toFixed(4)}</span></div>`).join('');
+  document.getElementById('topFeatures').innerHTML=feats.slice(0,7).map((f,i)=>`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(21,40,64,.4)"><span style="font-family:var(--display);font-size:14px;color:var(--txt3);width:16px">#${i+1}</span><span style="font-family:var(--mono);font-size:14px;color:var(--cyan);width:36px">${f.feature}</span><div class="ptrack" style="margin:0;flex:1"><div class="pfill" style="width:${(f.importance/feats[0].importance*100).toFixed(0)}%;background:${i<3?'#ff2d55':'#00d4ff'}"></div></div><span style="font-family:var(--mono);font-size:14px;color:var(--txt3);width:46px;text-align:right">${f.importance.toFixed(4)}</span></div>`).join('');
 }
 
 function explainRandom(){
@@ -697,22 +891,22 @@ function explainRandom(){
       <div style="font-size:32px">${fraud?'⚠':'✓'}</div>
       <div>
         <div style="font-family:var(--display);font-size:14px;font-weight:900;color:${color}">${fraud?'FRAUD DETECTED':'TRANSACTION CLEAR'}</div>
-        <div style="font-family:var(--mono);font-size:9px;color:var(--txt3)">Fraud Probability: ${(prob*100).toFixed(1)}% • Amount: ₹${vals[9].toFixed(2)}</div>
+        <div style="font-family:var(--mono);font-size:14px;color:var(--txt3)">Fraud Probability: ${(prob*100).toFixed(1)}% • Amount: ${CURRENCY_SYMBOL}${vals[9].toFixed(2)}</div>
       </div>
       <div style="margin-left:auto;text-align:right">
         <div style="font-family:var(--display);font-size:24px;font-weight:900;color:${color}">${(prob*100).toFixed(1)}%</div>
-        <div style="font-family:var(--mono);font-size:8px;color:var(--txt3)">FRAUD SCORE</div>
+        <div style="font-family:var(--mono);font-size:14px;color:var(--txt3)">FRAUD SCORE</div>
       </div>
     </div>
-    <div style="font-family:var(--mono);font-size:8px;color:var(--txt3);letter-spacing:2px;margin-bottom:10px">FEATURE CONTRIBUTIONS</div>
+    <div style="font-family:var(--mono);font-size:14px;color:var(--txt3);letter-spacing:2px;margin-bottom:10px">FEATURE CONTRIBUTIONS</div>
     ${feats.map((f,i)=>{ const sv=shapVals[i]*(0.8+Math.random()*.4); const pct=Math.min(Math.abs(sv)/.4*50,50); return `<div class="shap-row"><span class="shap-f">${f}</span><div class="shap-bc"><div class="${sv>0?'shap-pos':'shap-neg'}" style="width:${pct}%"></div></div><span class="shap-v" style="color:${sv>0?'var(--red)':'var(--cyan)'}">${sv>0?'+':''}${sv.toFixed(4)}</span></div>`; }).join('')}
-    <div style="margin-top:14px;font-family:var(--mono);font-size:9px;color:var(--txt3);padding:10px;background:var(--bg2);border-radius:5px;line-height:1.8">
-      ${fraud?`<span style="color:var(--red)">⚠ FRAUD:</span> Primarily flagged due to V14 (${vals[0].toFixed(2)}) — highly negative, strong fraud signal. Combined with elevated V4 and V12, model is confident.`:`<span style="color:var(--green)">✓ LEGIT:</span> V14 and key features are within normal ranges. High amount (₹${vals[9].toFixed(0)}) is not suspicious given normal feature pattern.`}
+    <div style="margin-top:14px;font-family:var(--mono);font-size:14px;color:var(--txt3);padding:10px;background:var(--bg2);border-radius:5px;line-height:1.8">
+      ${fraud?`<span style="color:var(--red)">⚠ FRAUD:</span> Primarily flagged due to V14 (${vals[0].toFixed(2)}) — highly negative, strong fraud signal. Combined with elevated V4 and V12, model is confident.`:`<span style="color:var(--green)">✓ LEGIT:</span> V14 and key features are within normal ranges. High amount (${CURRENCY_SYMBOL}${vals[9].toFixed(0)}) is not suspicious given normal feature pattern.`}
     </div>`;
 }
 
 // ── Init ───────────────────────────────────────────────────
-loadOverview();
+navigateTo(location.hash.slice(1)||'dash',false);
 </script>
 </body>
 </html>
