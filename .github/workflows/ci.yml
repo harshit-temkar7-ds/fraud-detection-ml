@@ -21,6 +21,6 @@ jobs:
       - run: docker build -t sentinel:ci .
       - name: Container starts and reports ready
         run: |
-          docker run -d --name s -e API_KEYS=ci-key -p 8000:8000 sentinel:ci
+          docker run -d --name sentinel-ci -e API_KEYS=ci-key -p 8000:8000 sentinel:ci
           for i in $(seq 1 30); do curl -fs localhost:8000/ready && break || sleep 2; done
           curl -fs -H "X-API-Key: ci-key" localhost:8000/model/info > /dev/null
