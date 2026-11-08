@@ -1,62 +1,88 @@
-version: "3.8"
+# docker compose up --build                      -> API + dashboard on http://localhost:8000
+# docker compose --profile streaming up --build  -> also Kafka + producer + consumer
+# Fast one-pass verification (PowerShell):
+#   $env:RATE_LIMIT_PER_MIN="100000"; $env:SEND_INTERVAL_SEC="0.01"; $env:REPLAY_LOOP="false"
+#   docker compose --profile streaming up --build
+x-app: &app
+  build: .
+  image: sentinel:latest
+  env_file:
+    - path: .env
+      required: false
 
 services:
+  api:
+    <<: *app
+    ports: ["8000:8000"]
+    environment:
+      API_KEYS: ${API_KEYS:-dev-key-change-me}
+      RATE_LIMIT_PER_MIN: ${RATE_LIMIT_PER_MIN:-120}
+    volumes:
+      - ./model:/app/model:ro      # swap in a re-trained model without rebuilding
+    restart: unless-stopped
+    # HEALTHCHECK comes from the Dockerfile (/ready)
 
-  # ── Zookeeper (required for Kafka) ────────────────────────────────────────
   zookeeper:
+    profiles: [streaming]
     image: confluentinc/cp-zookeeper:7.5.0
-    container_name: fraud_zookeeper
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
-    ports:
-      - "2181:2181"
+    healthcheck:
+      test: ["CMD-SHELL", "echo srvr | nc localhost 2181 | grep -q Zookeeper"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
-  # ── Kafka Broker ──────────────────────────────────────────────────────────
   kafka:
+    profiles: [streaming]
     image: confluentinc/cp-kafka:7.5.0
-    container_name: fraud_kafka
     depends_on:
-      - zookeeper
-    ports:
-      - "9092:9092"
+      zookeeper:
+        condition: service_healthy
+    ports: ["9092:9092"]           # host access (EXTERNAL listener)
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      # INTERNAL: container-to-container (kafka:29092). EXTERNAL: your host (localhost:9092).
+      KAFKA_LISTENERS: INTERNAL://0.0.0.0:29092,EXTERNAL://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:29092,EXTERNAL://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092 >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 20s
 
-  # ── FastAPI Scoring API ───────────────────────────────────────────────────
-  api:
-    build:
-      context: .
-      dockerfile: Dockerfile.api
-    container_name: fraud_api
-    ports:
-      - "8000:8000"
-    volumes:
-      - ./model:/app/model   # mount trained model artifacts
+  consumer:
+    <<: *app
+    profiles: [streaming]
+    command: ["python", "-m", "stream.consumer"]
+    depends_on:
+      kafka:
+        condition: service_healthy
+      api:
+        condition: service_healthy
     environment:
-      MODEL_DIR: /app/model
-    depends_on:
-      - kafka
-    restart: unless-stopped
+      KAFKA_BROKER: kafka:29092
+      API_URL: http://api:8000
+      API_KEY: ${API_KEYS:-dev-key-change-me}
+    restart: on-failure
 
-  # ── React Frontend ────────────────────────────────────────────────────────
-  frontend:
-    build:
-      context: .
-      dockerfile: Dockerfile.frontend
-      args:
-        REACT_APP_API_URL: http://localhost:8000
-    container_name: fraud_frontend
-    ports:
-      - "3000:3000"
+  producer:
+    <<: *app
+    profiles: [streaming]
+    command: ["python", "-m", "stream.producer"]
     depends_on:
-      - api
-    restart: unless-stopped
-
-networks:
-  default:
-    name: fraud_network
+      kafka:
+        condition: service_healthy
+      consumer:
+        condition: service_started
+    environment:
+      KAFKA_BROKER: kafka:29092
+      SEND_INTERVAL_SEC: ${SEND_INTERVAL_SEC:-0.5}
+      REPLAY_LOOP: ${REPLAY_LOOP:-true}
+    restart: on-failure

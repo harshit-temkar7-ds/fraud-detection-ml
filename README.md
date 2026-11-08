@@ -1,310 +1,152 @@
-# 🛡️ SENTINEL — Real-Time Fraud Detection System
-
-<div align="center">
-
-![Python](https://img.shields.io/badge/Python-3.10-3776AB?style=for-the-badge&logo=python&logoColor=white)
-![XGBoost](https://img.shields.io/badge/XGBoost-2.0.3-FF6600?style=for-the-badge&logo=xgboost&logoColor=white)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.108-009688?style=for-the-badge&logo=fastapi&logoColor=white)
-![Kafka](https://img.shields.io/badge/Apache_Kafka-9092-231F20?style=for-the-badge&logo=apachekafka&logoColor=white)
-![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white)
-
-**An end-to-end MLOps pipeline for real-time credit card fraud detection with Explainable AI**
-
-[Live Demo](#-quick-start) · [API Docs](#-api-reference) · [Architecture](#-architecture)
-
-</div>
-
 ---
-
-## 📌 Problem Statement
-
-Financial fraud causes **$485 billion** in annual losses worldwide. Traditional rule-based systems suffer from high false-positive rates, and black-box ML models aren't trusted by banks due to regulatory requirements (EU AI Act, GDPR).
-
-**SENTINEL solves all three:**
-- ✅ XGBoost model with reproducible metrics on a held-out test set
-- ✅ SHAP-powered per-transaction explanations for **regulatory compliance**
-- ✅ FastAPI prediction endpoints with real model-scored replay data
-
+title: SENTINEL Fraud Detection
+emoji: 🛡️
+colorFrom: blue
+colorTo: red
+sdk: docker
+app_port: 8000
+pinned: false
 ---
+# SENTINEL — fraud detection (XGBoost + FastAPI + Kafka)
 
-## 🏗️ Architecture
+An end-to-end, **honestly evaluated** card-fraud scoring project: time-ordered training with CV model selection,
+probability calibration, a cost-based decision threshold, a hardened scoring API with reason codes, an optional Kafka
+replay pipeline, drift monitoring, tests and CI.
 
-```
-Raw CSV Data
-    │
-    ▼
-EDA + SMOTE Balancing        ← Jupyter Notebook
-    │
-    ▼
-XGBoost Model Training       ← Scikit-learn + XGBoost
-    │
-    ├──► SHAP Explainability  ← Per-prediction feature attribution
-    │
-    ▼
-FastAPI REST API             ← /predict, /batch, /stream/live, /stats
-    ▲
-    │
-Kafka Consumer               ← Scores live transactions, raises fraud alerts
-    ▲
-    │
-Kafka Producer               ← Simulates 2 transactions/sec (5% fraud rate)
-    │
-    ▼
-HTML/JS Dashboard            ← Live feed, SHAP charts, risk gauges (port 3000)
-    │
-    ▼
-Docker Compose               ← All services containerized
-```
+> **Read this first.** The repo ships with a model trained on **synthetic** data so everything runs offline.
+> Numbers below are from that synthetic run and say nothing about real-world performance. Run
+> `make data-kaggle && make train` to train on the real [ULB credit-card dataset](https://www.kaggle.com/datasets/mlg-ulb/creditcardfraud);
+> this section is rewritten automatically by `src/train.py`.
 
----
+## Latest results (auto-generated from `model/metrics.json`)
+<!-- METRICS:START -->
 
-## 📁 Project Structure
+Model `20261107-184917` - strategy **scale_pos_weight**, calibration **sigmoid**,
+decision threshold **0.0717** (cost-optimal: FN cost 111.58, FP cost 5.00).
 
-```
-fraud_detection/
-├── api/
-│   └── main.py                     # FastAPI app — predict, batch, stream, stats, SHAP endpoints
-├── frontend/
-│   └── dashboard.html              # Vanilla JS + Chart.js dashboard (served by nginx)
-├── stream/
-│   ├── producer.py                 # Kafka producer — synthetic transaction stream
-│   └── consumer.py                 # Kafka consumer — scores via API, logs fraud alerts
-├── model/
-│   ├── xgb_fraud_model.pkl         # Trained XGBoost classifier
-│   ├── amount_scaler.pkl           # StandardScaler for transaction amount
-│   ├── feature_names.pkl           # Ordered feature list (V1–V28 + Amount)
-│   ├── test_sample.csv             # Standardized held-out transactions for replay
-│   ├── test_sample_labels.csv      # Ground-truth labels, same row order as test_sample.csv
-│   └── metrics.json                # Metrics measured on the held-out test sample
-├── notebooks/
-│   ├── 01_eda_and_training.ipynb   # Full EDA, SMOTE, training, SHAP analysis
-│   └── (input data is read from ../data/creditcard.csv)
-├── data/                           # EDA + evaluation plots (PNG)
-├── utils.js                        # Shared JS helpers — API client, formatters, charts
-├── docker-compose.yml              # Zookeeper + Kafka + API + Frontend
-├── Dockerfile.api                  # Python 3.10-slim, uvicorn
-├── Dockerfile.frontend             # Node build → nginx:alpine, port 3000
-└── requirements.txt
-```
+Data: 284,807 rows / 492 frauds - time-ordered split train/val/test = 170,884 / 56,961 / 56,962 rows
+(360 / 57 / 75 frauds). Source: user-provided dataset.
 
----
+**Held-out test split, mean [95% bootstrap CI]**
 
-## 📊 Model Performance
+| Metric | Value |
+|---|---|
+| PR-AUC (primary) | 0.790 [0.692, 0.870] |
+| ROC-AUC | 0.981 [0.968, 0.992] |
+| Recall at precision >= 80% | 0.760 [0.656, 0.848] |
+| Precision @ threshold | 0.760 [0.662, 0.851] |
+| Recall @ threshold | 0.760 [0.656, 0.848] |
+| F1 @ threshold | 0.760 [0.681, 0.828] |
+| Expected cost on test | 2,098 [1,236, 3,098] |
 
-These values were recomputed from the shipped model, `test_sample.csv`, and its
-matching labels. They match the notebook's last run. The 2,000-row held-out set
-contains 40 fraud cases; at the 0.5 threshold the model flagged 46 transactions.
-The confusion counts are TN 1,944, FP 16, FN 10, and TP 30. Accuracy alone can
-hide fraud misses, so read it alongside precision and recall.
+Confusion at threshold: TN 56,869, FP 18, FN 18, TP 57.
+Cost baselines on test: flag nothing = 8,368; fixed 0.5 threshold = 2,140;
+chosen threshold = 2,098.
 
-| Metric | Score |
-|--------|-------|
-| ROC-AUC | 0.9752 |
-| PR-AUC | 0.8164 |
-| F1-Score (fraud) | 0.6977 |
-| Precision (fraud) | 0.6522 |
-| Recall (fraud) | 0.7500 |
-| Accuracy | 0.9870 |
-| API latency | Measured at runtime by `/stats/summary` |
+**5-fold CV on the training split (model selection)**
 
-The notebook uses deterministic synthetic data when `data/creditcard.csv` is
-absent. The checked-in training sample has 10,000 rows with 200 fraud rows (2%).
-If you replace it with another dataset and retrain, these metrics will change.
+| Strategy | PR-AUC (mean +- sd) | Recall @ precision |
+|---|---|---|
+| none | 0.876 +- 0.032 | 0.867 |
+| scale_pos_weight (selected) | 0.878 +- 0.034 | 0.875 |
+| smote | 0.866 +- 0.026 | 0.861 |
 
----
+<!-- METRICS:END -->
 
-## 🔬 Key Techniques
+Full details, limitations and failure modes: [`docs/MODEL_CARD.md`](docs/MODEL_CARD.md). Figures in `docs/figures/`.
 
-| Component | Technique | Why |
-|-----------|-----------|-----|
-| Class Imbalance | SMOTE | Oversamples fraud in the training split only |
-| Model | XGBoost | State-of-the-art on tabular fraud data |
-| Explainability | SHAP TreeExplainer | Per-prediction, per-feature attribution |
-| API | FastAPI + Pydantic | Type-safe, async, auto-documented |
-| Streaming | Apache Kafka | Industry-standard message queue |
-| Deployment | Docker Compose | Reproducible multi-service setup |
-
----
-
-## 🚀 Quick Start
-
-### Prerequisites
-- Python 3.10+
-- Docker & Docker Compose (for Kafka / full stack)
-
-### Option A — Run Locally (fastest)
-
-**1. Create a virtual environment and install dependencies**
-```bash
-python -m venv .venv
-# Windows PowerShell:
-.\.venv\Scripts\Activate.ps1
-# macOS / Linux:
-# source .venv/bin/activate
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
-```
-
-**2. Start the FastAPI backend**
-```bash
-uvicorn api.main:app --reload --port 8000
-# → http://localhost:8000/       (dashboard)
-# → http://localhost:8000/docs   (Swagger UI)
-```
-
-> The pre-trained model is already included in `model/` — no retraining needed.
-
-**3. Serve the frontend**
-```bash
-cd frontend
-python -m http.server 3000
-# → http://localhost:3000/dashboard.html
-```
-
-### Option B — Full Stack with Docker
+## Quick start
 
 ```bash
-docker-compose up --build
+python -m venv .venv && source .venv/bin/activate        # Windows: .venv\Scripts\activate
+pip install -r requirements-dev.txt
+
+# (a) offline demo model is already in model/ -> just run the API + dashboard
+export API_KEYS=dev-key-change-me                         # Windows PowerShell: $env:API_KEYS="dev-key-change-me"
+uvicorn api.main:app --port 8000
+# open http://localhost:8000  (the dashboard asks for the API key once)  |  API docs: http://localhost:8000/docs
+
+# (b) train on the REAL data
+pip install kaggle                                        # needs ~/.kaggle/kaggle.json
+python scripts/download_data.py                           # -> data/creditcard.csv (validated: 284,807 rows / 492 frauds)
+python -m src.train                                       # writes model/, docs/MODEL_CARD.md and the block above
+
+# (c) offline demo training (synthetic data)
+python -m src.train --synthetic
 ```
 
-| Service | URL |
-|---------|-----|
-| FastAPI + Dashboard | http://localhost:8000 |
-| Frontend (nginx) | http://localhost:3000 |
-| Kafka Broker | localhost:9092 |
+Docker: `docker compose up --build` (API + dashboard on :8000).
+With Kafka replay: `docker compose --profile streaming up --build`.
+(`.env.example` → `.env` to change the API key. Docker files were written carefully but **could not be executed in the
+authoring sandbox**; CI builds the image and checks `/ready`.)
 
-### Option C — Retrain the Model
+## What changed vs. the original project
+
+| Area | Before | Now |
+|---|---|---|
+| Data | 10k-row Gaussian toy, planted shift | Real Kaggle data via a validated download script; harder, labelled-synthetic fallback for offline use |
+| Evaluation | single 80/20 split, 40 test frauds, ROC-AUC headline | time-ordered train/val/test, 5-fold stratified CV for selection, PR-AUC primary, **bootstrap 95% CIs** |
+| Imbalance | SMOTE before split-agnostic pipeline | `none` vs `scale_pos_weight` vs SMOTE (inside CV folds), chosen by CV PR-AUC on train only |
+| Probabilities / threshold | fixed 0.5 / 0.4 / 0.7 | calibrated (isotonic/sigmoid, validation split) + **cost-optimal threshold**, risk bands derived from it |
+| Artifacts | pickles | xgboost native JSON + JSON params, SHA-256 checked, version metadata, library-version check |
+| API | zero-default fields, random demo scores, raw errors | required/range-checked fields (`extra=forbid`), batch ≤ 500, 503 when no model, API-key auth, rate limiting, request IDs, generic errors, optional SHAP (`?explain=true`, flagged only) |
+| Explanations | random numbers in the dashboard | real TreeSHAP reason codes (honestly described as model attributions on anonymised features) |
+| Streaming | hand-made fingerprint, crashes without SHAP, localhost | replays real held-out rows with true labels; env config, retries/backoff, dead-letter topic, running precision/recall |
+| Dashboard | fake merchants/locations, invented threshold curve, random SHAP | labelled "replay of held-out data", real threshold sweep and explanations, synthetic-data banner |
+| Docker | 3 broken Dockerfiles, `localhost` Kafka listener | one non-root image with HEALTHCHECK; compose with internal/external Kafka listeners and health-gated startup |
+| Quality | none | 54 tests, ruff, GitHub Actions (lint, tests incl. training reproducibility, docker build), drift (PSI) endpoint |
+
+## API
+
+All endpoints except `/`, `/live`, `/ready`, `/health` need header `X-API-Key`.
+
+| Endpoint | Purpose |
+|---|---|
+| `POST /predict?explain=false` | score one transaction (`V1..V28`, `Amount`, `Time` — all required). `explain=true` adds reason codes for flagged rows |
+| `POST /predict/batch` | up to `MAX_BATCH_SIZE` (500) transactions |
+| `GET /model/info`, `/stats/summary`, `/shap/global` | model metadata, evaluation metrics (+CIs), global importance |
+| `GET /replay/feed`, `/replay/threshold?value=`, `/replay/explain` | dashboard data from the held-out replay sample (labelled; not live traffic) |
+| `GET /monitoring/metrics`, `/monitoring/drift` | counts, flag rate, latency p50/p95/p99; PSI of `Amount` + top features vs. the training split |
+| `GET /live`, `/ready`, `/health` | probes (503 if the model failed to load) |
 
 ```bash
-# Optional: place creditcard.csv in data/ from Kaggle
-# If absent, the notebook generates a deterministic 10,000-row, 2%-fraud sample
-cd notebooks
-jupyter notebook 01_eda_and_training.ipynb
-# Run all cells (~2–3 min) → saves artifacts to model/
+curl -s -X POST localhost:8000/predict?explain=true -H "X-API-Key: dev-key-change-me" -H "Content-Type: application/json" \
+  -d @example_transaction.json
 ```
+(`example_transaction.json` is included.)
 
-### Option D — Kafka Streaming (optional)
+Environment variables: `API_KEYS`, `RATE_LIMIT_PER_MIN`, `MAX_BATCH_SIZE`, `ALLOWED_ORIGINS`, `MODEL_DIR`, `STRICT_VERSIONS`,
+`DRIFT_WINDOW`, `DRIFT_MIN_SAMPLES`, `LOG_LEVEL`. Stream: `KAFKA_BROKER`, `KAFKA_TOPIC`, `KAFKA_DLQ_TOPIC`, `API_URL`, `API_KEY`,
+`SEND_INTERVAL_SEC`, `SCORE_RETRIES`, `BACKOFF_BASE_SEC`.
+
+## Kafka replay (without Docker)
 
 ```bash
-# Start Kafka
-docker-compose up zookeeper kafka -d
+# terminal 1: a broker on localhost:9092 (e.g. docker compose --profile streaming up kafka)
+# terminal 2: API (see above)
+# terminal 3:
+API_KEY=dev-key-change-me python -m stream.consumer
+# terminal 4:
+python -m stream.producer
+```
+The consumer logs fraud alerts and a running TP/FP/FN/TN + precision/recall against the replayed true labels.
 
-# Terminal 1 — simulate 2 txn/sec (5% fraud rate)
-python stream/producer.py
+## Project layout
 
-# Terminal 2 — consume, score via API, alert on fraud
-python stream/consumer.py
+```
+config/train.yaml      all training settings          src/        features, train, decision, metrics, drift, bundle
+scripts/               download_data.py, make_synthetic.py   api/        FastAPI app (auth, limits, monitoring)
+stream/                Kafka producer + consumer       frontend/   dashboard (served by the API at "/")
+model/                 versioned artifacts + replay sample   tests/      pytest suite
+docs/                  MODEL_CARD.md (generated) + figures   notebooks/  EDA only
 ```
 
----
+## Limitations (also in the model card)
+- Shipped metrics are synthetic. Real-data results will differ, and with only 492 frauds in the Kaggle set the CIs stay wide.
+- Features are anonymised PCA components: reason codes explain the model, not real-world causes.
+- Rate limiting and monitoring are in-memory (per process). Use a shared store for multi-replica deployments.
+- No claim of GDPR / EU AI Act compliance is made; see the model card.
+- Time-based generalisation is only tested over the ~2 days the Kaggle data spans.
 
-## 🔌 API Reference
-
-The API auto-serves the dashboard at `GET /` and exposes the following endpoints:
-
-### `POST /predict` — Score a single transaction
-```json
-// Request
-{
-  "V1": -1.36, "V2": -0.07, "V3": 2.54, "...", "V28": -0.02,
-  "Amount": 149.62
-}
-
-// Response
-{
-  "transaction_id": "...",
-  "is_fraud": true,
-  "fraud_probability": 0.9241,
-  "risk_level": "HIGH",
-  "amount": 149.62,
-  "timestamp": "2024-01-01T12:00:00",
-  "top_risk_factors": [ ... ],
-  "demo_mode": false
-}
-```
-
-### `POST /predict/batch` — Score multiple transactions
-```json
-// Response
-{
-  "total": 50,
-  "fraud_count": 3,
-  "fraud_rate": 0.06,
-  "results": [ ... ]
-}
-```
-
-### `GET /stream/live` — Rolling 20-row model-scored test-sample replay
-The feed advances by 5 rows per request, so adjacent responses overlap. IDs are
-stable (`TXN1000` through `TXN2999`) and wrap after the 2,000-row test sample.
-Probabilities come from the loaded model; amounts are inverse-scaled for display.
-Merchant and location labels are simulated. The feed is a replay, not an external
-card-processing stream.
-### `GET /stats/summary` — Dashboard KPIs (sample counts, fraud rate, amount saved, model metrics)
-### `GET /shap/global` — Top 15 feature importances
-### `GET /health` — Service health + model load status
-### `GET /model/info` — Model type, feature count, feature names
-
-> Full interactive docs available at **http://localhost:8000/docs**
-
----
-
-## 🖥️ Dashboard Features
-
-The API serves `frontend/dashboard.html` directly at `/`. It is a single-file
-vanilla HTML/CSS/JS dashboard with no frontend build step. Its current navigation
-uses the `#dash`, `#ana`, and `#mod` hashes.
-
-- **Dashboard** — summary KPIs, fraud split, and a refreshable table of scored sample rows
-- **Analyzer** — typical and suspicious presets, ordered value paste for V1–V28,
-  and optional individual feature inputs; omitted features default to zero
-- **Model** — held-out test metrics and performance diagnostics
-- **API status** — reflects `/health`; the page shows a demo-mode state when the
-  model is not loaded
-- **Responsive layout** — full-width content with a mobile top navigation bar
-
----
-
-### 🖥️ Dashboard Interface
-![Dashboard](data/dashboard.png)
-
-### 📊 Model Performance
-![Performance](data/evaluation_plots.png)
-
-### 🔍 SHAP Feature Importance
-![SHAP](data/shap_beeswarm.png)
-
-### 📈 Retrieval / Analysis
-![Analysis](data/eda_correlations.png)
-
----
----
-
-## 🧠 Demo Mode
-
-If model files are missing, the API reports **demo mode**. Single and batch
-predictions are marked `demo_mode: true` and are not real model output; the live
-feed is empty and sample counts are zero. The summary reads persisted evaluation
-metrics from `model/metrics.json` when that file is present; those scores describe
-the saved test run, not the unavailable runtime model. SHAP importance is empty.
-
----
-## 🛠️ Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| ML | Python 3.10, XGBoost 2.0, Scikit-learn, imbalanced-learn (SMOTE) |
-| Explainability | SHAP 0.44 (TreeExplainer) |
-| API | FastAPI 0.108, Uvicorn, Pydantic v2 |
-| Streaming | Apache Kafka 7.5, kafka-python |
-| Frontend | Vanilla JS, Chart.js 4.4, HTML5/CSS3 |
-| Infra | Docker, Docker Compose, nginx:alpine |
-| Notebooks | Jupyter, matplotlib, seaborn, plotly |
-
----
-
-
-
-## 📄 License
-
-MIT License — see [LICENSE](LICENSE) for details.
+## License
+MIT (see `LICENSE`).

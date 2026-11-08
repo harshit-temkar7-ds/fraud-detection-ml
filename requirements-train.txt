@@ -1,0 +1,5 @@
+-r requirements.txt
+imbalanced-learn==0.14.2
+matplotlib==3.11.2
+joblib==1.6.0
+# optional, only for the EDA notebook:  pip install jupyter

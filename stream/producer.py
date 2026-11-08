@@ -1,87 +1,77 @@
-"""
-Kafka Producer — Simulates a real-time transaction stream
-Sends random transactions (some seeded as fraud) to the Kafka topic 'transactions'
+"""Kafka producer: replays REAL held-out transactions (with their true labels) at a fixed rate.
+
+    KAFKA_BROKER=localhost:9092 python -m stream.producer
 """
 
 import json
-import time
-import random
-import numpy as np
-from kafka import KafkaProducer
 import logging
+import time
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s | %(message)s')
-logger = logging.getLogger(__name__)
+import pandas as pd
 
-KAFKA_BROKER  = "localhost:9092"
-TOPIC         = "transactions"
-SEND_RATE_SEC = 0.5    # one transaction every 0.5s
-FRAUD_RATE    = 0.05   # 5% of messages are fraud-like
+from .settings import StreamSettings
 
-
-def generate_transaction(force_fraud: bool = False) -> dict:
-    """Generate a synthetic transaction matching creditcard.csv schema"""
-    np.random.seed(None)
-
-    if force_fraud:
-        # Fraud fingerprint — V1 very negative, high V3
-        txn = {f"V{i}": np.random.randn() for i in range(1, 29)}
-        txn["V1"]  -= random.uniform(2, 5)
-        txn["V3"]  += random.uniform(2, 4)
-        txn["V14"] -= random.uniform(2, 4)
-        txn["Amount"] = random.uniform(1, 50)   # small amounts typical in fraud
-    else:
-        txn = {f"V{i}": np.random.randn() for i in range(1, 29)}
-        txn["Amount"] = abs(np.random.exponential(88))
-
-    # Round to 4 dp
-    txn = {k: round(float(v), 4) for k, v in txn.items()}
-    txn["timestamp"] = time.time()
-    txn["is_simulated_fraud"] = force_fraud  # ground-truth label for evaluation
-    return txn
+logger = logging.getLogger("producer")
 
 
-def on_send_success(metadata):
-    logger.info(f"✅ Sent to [{metadata.topic}] partition={metadata.partition} offset={metadata.offset}")
+def load_replay(path: str) -> pd.DataFrame:
+    df = pd.read_csv(path)
+    if "Class" not in df.columns:
+        raise ValueError(f"{path} must contain the true label column 'Class'")
+    return df
 
 
-def on_send_error(exc):
-    logger.error(f"❌ Send failed: {exc}")
+def build_message(row: pd.Series, row_id: int) -> dict:
+    msg = {k: float(v) for k, v in row.items() if k not in ("Class", "weight")}
+    msg["label"] = int(row["Class"])      # ground truth, used by the consumer for precision/recall
+    msg["row_id"] = int(row_id)
+    msg["source"] = "replay_of_held_out_test_data"
+    return msg
+
+
+def connect_with_retries(factory, retries: int, base: float, what: str):
+    for attempt in range(1, retries + 1):
+        try:
+            return factory()
+        except Exception as exc:  # kafka raises several exception types
+            wait = min(base * 2 ** (attempt - 1), 30)
+            logger.warning("%s not reachable (%s); retry %d/%d in %.1fs", what, exc, attempt, retries, wait)
+            time.sleep(wait)
+    raise SystemExit(f"Could not connect to {what} after {retries} attempts")
 
 
 def main():
-    logger.info(f"Connecting to Kafka broker at {KAFKA_BROKER}...")
-    try:
-        producer = KafkaProducer(
-            bootstrap_servers=[KAFKA_BROKER],
-            value_serializer=lambda v: json.dumps(v).encode("utf-8"),
-            acks="all",
-            retries=3
-        )
-        logger.info(f"✅ Connected! Streaming to topic: [{TOPIC}]")
-    except Exception as e:
-        logger.error(f"❌ Cannot connect to Kafka: {e}")
-        logger.info("💡 Start Kafka first:\n   docker-compose up kafka zookeeper")
-        return
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+    cfg = StreamSettings()
+    from kafka import KafkaProducer
 
-    count = 0
+    df = load_replay(cfg.replay_file)
+    producer = connect_with_retries(
+        lambda: KafkaProducer(bootstrap_servers=[cfg.broker], acks="all", retries=3,
+                              value_serializer=lambda v: json.dumps(v).encode("utf-8")),
+        cfg.connect_retries, cfg.backoff_base_sec, f"Kafka at {cfg.broker}")
+    logger.info("Replaying %d held-out rows to topic '%s' every %.2fs", len(df), cfg.topic, cfg.send_interval_sec)
+
+    sent = 0
     try:
         while True:
-            is_fraud = random.random() < FRAUD_RATE
-            txn = generate_transaction(force_fraud=is_fraud)
-
-            producer.send(TOPIC, value=txn).add_callback(on_send_success).add_errback(on_send_error)
-            producer.flush()
-
-            count += 1
-            tag = "🚨 FRAUD" if is_fraud else "✅ LEGIT"
-            logger.info(f"[#{count}] {tag} | Amount=${txn['Amount']:.2f}")
-
-            time.sleep(SEND_RATE_SEC)
-
-    except KeyboardInterrupt:
-        logger.info(f"\n⛔ Stopped. Total sent: {count}")
+            for i, row in df.iterrows():
+                producer.send(cfg.topic, value=build_message(row, i))
+                sent += 1
+                if sent % 50 == 0:
+                    producer.flush()
+                    logger.info("sent %d messages", sent)
+                if cfg.max_messages and sent >= cfg.max_messages:
+                    raise StopIteration
+                time.sleep(cfg.send_interval_sec)
+            if not cfg.replay_loop:
+                break
+    except (KeyboardInterrupt, StopIteration):
+        pass
+    finally:
+        producer.flush()
         producer.close()
+        logger.info("Stopped after %d messages", sent)
 
 
 if __name__ == "__main__":

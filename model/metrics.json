@@ -1,8 +1,146 @@
 {
-  "roc_auc": 0.9751658163265305,
-  "pr_auc": 0.8163775180144874,
-  "f1": 0.6976744186046512,
-  "precision": 0.6521739130434783,
-  "recall": 0.75,
-  "accuracy": 0.987
+  "model_version": "20261107-184917",
+  "synthetic_data": false,
+  "selected_strategy": "scale_pos_weight",
+  "cv": {
+    "none": {
+      "pr_auc_mean": 0.875997067744452,
+      "pr_auc_std": 0.03223845271040894,
+      "recall_at_precision_mean": 0.8666666666666666,
+      "pr_auc_folds": [
+        0.834199533894564,
+        0.9093269343007865,
+        0.8467800474489847,
+        0.9145240909994461,
+        0.8751547320784783
+      ]
+    },
+    "scale_pos_weight": {
+      "pr_auc_mean": 0.8781226010787652,
+      "pr_auc_std": 0.033507163597776335,
+      "recall_at_precision_mean": 0.875,
+      "pr_auc_folds": [
+        0.8455592597208069,
+        0.9264147763462551,
+        0.842170469903837,
+        0.9072618357015242,
+        0.8692066637214024
+      ]
+    },
+    "smote": {
+      "pr_auc_mean": 0.8662355147572713,
+      "pr_auc_std": 0.025772626934343502,
+      "recall_at_precision_mean": 0.861111111111111,
+      "pr_auc_folds": [
+        0.848697501747888,
+        0.8887670396074863,
+        0.8294171791508458,
+        0.9000907586685992,
+        0.8642050946115372
+      ]
+    }
+  },
+  "threshold": 0.0717072168369875,
+  "costs": {
+    "false_negative": 111.57672222222222,
+    "false_positive": 5.0,
+    "false_negative_source": "mean fraud amount in train split"
+  },
+  "validation_cost_at_threshold": 1433.9206666666666,
+  "test": {
+    "pr_auc": {
+      "value": 0.7896376753301876,
+      "ci95": [
+        0.6922069400291784,
+        0.8700774595581333
+      ]
+    },
+    "roc_auc": {
+      "value": 0.9812175013623499,
+      "ci95": [
+        0.9677088060825606,
+        0.9919998023519382
+      ]
+    },
+    "recall_at_precision": {
+      "value": 0.76,
+      "ci95": [
+        0.6560775162337664,
+        0.8481196644097733
+      ]
+    },
+    "precision": {
+      "value": 0.76,
+      "ci95": [
+        0.6617205882352941,
+        0.8505747126436781
+      ]
+    },
+    "recall": {
+      "value": 0.76,
+      "ci95": [
+        0.6560775162337664,
+        0.8481196644097733
+      ]
+    },
+    "f1": {
+      "value": 0.76,
+      "ci95": [
+        0.6811517113783534,
+        0.8276147837683367
+      ]
+    },
+    "accuracy": {
+      "value": 0.9993679997191109,
+      "ci95": [
+        0.9991748885221726,
+        0.9995439942417752
+      ]
+    },
+    "expected_cost": {
+      "value": 2098.381,
+      "ci95": [
+        1235.7672222222222,
+        3097.5715
+      ]
+    }
+  },
+  "test_confusion": {
+    "tn": 56869,
+    "fp": 18,
+    "fn": 18,
+    "tp": 57
+  },
+  "test_cost_baselines": {
+    "cost_flag_nothing": 8368.254166666666,
+    "cost_at_threshold_0.5": 2139.957722222222,
+    "cost_at_chosen_threshold": 2098.381
+  },
+  "calibration": {
+    "method": "sigmoid",
+    "brier_raw_test": 0.0007123334315102407,
+    "brier_calibrated_test": 0.00038110046938001304,
+    "mean_pred_raw_test": 0.003055224195122719,
+    "mean_pred_calibrated_test": 0.001291114615836292,
+    "observed_fraud_rate_test": 0.001316667251852112
+  },
+  "data": {
+    "source": "user-provided dataset",
+    "synthetic": false,
+    "file": "creditcard.csv",
+    "sha256": "76274b691b16a6c49d3f159c883398e03ccd6d1ee12d9d8ee38f4b4b98551a89",
+    "rows": 284807,
+    "frauds": 492,
+    "split_rows": {
+      "train": 170884,
+      "val": 56961,
+      "test": 56962
+    },
+    "split_frauds": {
+      "train": 360,
+      "val": 57,
+      "test": 75
+    },
+    "split_kind": "time-ordered (train earliest, test latest)"
+  }
 }

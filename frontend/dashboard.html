@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SENTINEL — Fraud Detection</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
 :root {
@@ -22,9 +23,9 @@
   --warn: #ffd166;
   --sidebar: 230px;
   --body: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --mono: var(--body);
-  --display: var(--body);
-  --heading: var(--body);
+  --mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", "SF Mono", Consolas, monospace;
+  --display: "Space Grotesk", Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --heading: "Space Grotesk", Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
   /* Temporary aliases keep the existing panels consistent as later steps land. */
   --cyan: var(--accent);
   --green: var(--ok);
@@ -272,6 +273,23 @@ button:focus-visible,.nav-btn:focus-visible,input:focus-visible{outline:2px soli
 
 /* SCANLINE */
 body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;background:repeating-linear-gradient(0deg,rgba(0,0,0,.03) 0px,rgba(0,0,0,.03) 1px,transparent 1px,transparent 2px);opacity:.4}
+
+/* ── typography pass: Inter (UI) · Space Grotesk (headings, big numbers) · JetBrains Mono (data, IDs, labels) ── */
+html{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility}
+body{font-size:15px;line-height:1.5;letter-spacing:-.005em}
+.stat-lbl,.sb-sec,.form-lbl,.tbl th,.fh,.ring-lbl,.cm-lbl,.live-badge{font-size:11.5px;font-weight:600;letter-spacing:.14em;text-transform:uppercase}
+.topbar-title{font-size:13px;letter-spacing:.22em}
+.card-t{font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.sb-logo-name{letter-spacing:-.02em}
+.stat-val{font-size:34px;font-weight:700;letter-spacing:-.03em;font-feature-settings:"tnum" 1,"zero" 1}
+.stat-val small{display:block;margin-top:6px;font-family:var(--mono);font-size:12px;font-weight:500;letter-spacing:0;color:var(--txt3)}
+.stat-sub,.mname,.cm-sub{font-size:13px}
+.tbl td,.result-box,.alert-item,.form-inp,.badge,.shap-f,.shap-v,.clock,.mval,.mrow{font-size:13px;font-variant-numeric:tabular-nums;font-feature-settings:"zero" 1}
+.badge{font-weight:600;letter-spacing:.06em}
+.cm-n,.ring-num{font-family:var(--display);font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.btn{font-size:12.5px;letter-spacing:.08em;text-transform:uppercase}
+.sb-api{font-family:var(--mono);font-size:12px}
+.form-inp{font-family:var(--mono)}
 </style>
 </head>
 <body>
@@ -300,18 +318,19 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
   <div class="topbar">
     <div class="topbar-title" id="topTitle">OVERVIEW / DASHBOARD</div>
     <div class="topbar-r">
-      <div class="live-badge"><span class="live-dot"></span>LIVE</div>
+      <div class="live-badge"><span class="live-dot"></span>REPLAY</div>
       <div class="clock" id="clock">Loading time…</div>
     </div>
   </div>
   <div class="content">
+    <div id="dataBanner" hidden style="background:rgba(255,149,0,.12);border:1px solid rgba(255,149,0,.5);color:#ffb340;font-family:var(--mono);font-size:13px;padding:10px 14px;border-radius:6px;margin-bottom:14px"></div>
 
     <!-- ══ OVERVIEW ══ -->
     <div class="section active" id="sec-overview">
       <div class="stats-grid">
-        <div class="stat c"><div class="stat-ico">◎</div><div class="stat-lbl">TOTAL TRANSACTIONS</div><div class="stat-val state-copy" id="ovTotal">Waiting for data…</div><div class="stat-sub">Scored test sample</div></div>
+        <div class="stat c"><div class="stat-ico">◎</div><div class="stat-lbl">TOTAL TRANSACTIONS</div><div class="stat-val state-copy" id="ovTotal">Waiting for data…</div><div class="stat-sub">Replayed held-out rows</div></div>
         <div class="stat r"><div class="stat-ico">⚠</div><div class="stat-lbl">FRAUD DETECTED</div><div class="stat-val state-copy" id="ovFraud">Waiting for data…</div><div class="stat-sub" id="ovFraudPct">Waiting for data…</div></div>
-        <div class="stat g"><div class="stat-ico" id="currencyIcon"></div><div class="stat-lbl">FLAGGED AMOUNT</div><div class="stat-val state-copy" id="ovSaved">Waiting for data…</div><div class="stat-sub">Flagged test sample</div></div>
+        <div class="stat g"><div class="stat-ico" id="currencyIcon"></div><div class="stat-lbl">FRAUD $ CAUGHT</div><div class="stat-val state-copy" id="ovSaved">Waiting for data…</div><div class="stat-sub">True frauds flagged in replay</div></div>
         <div class="stat o"><div class="stat-ico">⚡</div><div class="stat-lbl">AVG RESPONSE</div><div class="stat-val state-copy" id="ovMs">Waiting for data…</div><div class="stat-sub">Milliseconds</div></div>
       </div>
       <div class="g2" style="grid-template-columns:1fr">
@@ -329,7 +348,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
       </div>
     </div>
 
-    <!-- ══ LIVE MONITOR ══ -->
+    <!-- ══ REPLAY MONITOR ══ -->
     <div class="section" id="sec-monitor">
       <div class="stats-grid">
         <div class="stat c"><div class="stat-lbl">PROCESSED (SESSION)</div><div class="stat-val" id="mTotal">0</div><div class="stat-sub">Auto-refresh 5s</div></div>
@@ -340,11 +359,11 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
       <div class="g3">
         <div class="card" style="margin:0">
           <div class="card-h">
-            <span class="card-t">LIVE FEED</span>
+            <span class="card-t">REPLAY FEED · HELD-OUT DATA</span>
             <button class="btn btn-c" id="pauseBtn" onclick="togglePause()" style="padding:4px 12px;font-size:14px">⏸ PAUSE</button>
           </div>
           <div class="feed-hdr">
-            <span class="fh">TXN ID</span><span class="fh">MERCHANT / LOCATION (SIMULATED)</span><span class="fh">AMOUNT</span>
+            <span class="fh">ROW ID</span><span class="fh">TRUE LABEL (REPLAY)</span><span class="fh">AMOUNT</span>
             <span class="fh">PROB</span><span class="fh">STATUS</span><span class="fh">TIME</span>
           </div>
           <div id="liveFeed" style="max-height:350px;overflow-y:auto"><div class="state-message">Waiting for data…</div></div>
@@ -398,9 +417,11 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
             </div>
           </div>
           <div class="card-b">
-            <div style="margin-bottom:12px">
-              <label class="form-lbl" id="amountLabel">AMOUNT</label>
-              <input class="form-inp" type="number" id="inpAmount" value="250" step="0.01" style="max-width:200px">
+            <div style="margin-bottom:12px;display:flex;gap:16px;flex-wrap:wrap">
+              <div><label class="form-lbl" id="amountLabel">AMOUNT</label>
+              <input class="form-inp" type="number" id="inpAmount" value="250" min="0" step="0.01" style="max-width:200px"></div>
+              <div><label class="form-lbl">HOUR OF DAY (0–23)</label>
+              <input class="form-inp" type="number" id="inpHour" value="14" min="0" max="23" step="1" style="max-width:120px"></div>
             </div>
             <div class="form-lbl" style="margin-bottom:8px">QUICK EXAMPLES</div>
             <div class="preset-row">
@@ -480,8 +501,8 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
         <div class="card" style="margin:0">
           <div class="card-h"><span class="card-t">THRESHOLD TUNER</span></div>
           <div class="card-b">
-            <label class="form-lbl">THRESHOLD: <span id="threshVal" style="color:var(--cyan)">0.50</span></label>
-            <input type="range" id="threshSlider" min="0.1" max="0.9" step="0.05" value="0.5"
+            <label class="form-lbl">THRESHOLD: <span id="threshVal" style="color:var(--cyan)">0.08</span></label>
+            <input type="range" id="threshSlider" min="0.01" max="0.9" step="0.01" value="0.08"
               style="width:100%;accent-color:var(--cyan);margin:10px 0 16px"
               oninput="updateThresh(this.value)">
             <div id="threshStats"></div>
@@ -517,11 +538,11 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;b
       </div>
       <div class="card">
         <div class="card-h">
-          <span class="card-t">LOCAL EXPLANATION</span>
-          <button class="btn btn-c" onclick="explainRandom()" style="padding:4px 12px;font-size:14px">⚄ EXPLAIN RANDOM</button>
+          <span class="card-t">LOCAL EXPLANATION · REAL TREESHAP</span>
+          <button class="btn btn-c" onclick="explainReplay(true)" style="padding:4px 12px;font-size:14px">EXPLAIN A FLAGGED ROW</button> <button class="btn btn-c" onclick="explainReplay(false)" style="padding:4px 12px;font-size:14px">EXPLAIN A NON-FLAGGED ROW</button>
         </div>
         <div class="card-b" id="localShap">
-          <div class="state-message">Choose Explain Random to see a local explanation.</div>
+          <div class="state-message">Pick a replay row to see its real TreeSHAP explanation.</div>
         </div>
       </div>
     </div>
@@ -538,9 +559,14 @@ document.getElementById('currencyIcon').textContent = CURRENCY_SYMBOL;
 document.getElementById('amountLabel').textContent = `AMOUNT (${CURRENCY_SYMBOL})`;
 
 // ── utils ──────────────────────────────────────────────────
-async function apiRequest(path,options={}){
+let MODEL_T=0.5;           // decision threshold reported by the API (set when stats load)
+function apiKey(){ return sessionStorage.getItem('sentinelKey')||''; }
+function askKey(){ const k=window.prompt('Enter the SENTINEL API key (the API_KEYS value the server was started with):'); if(k){ sessionStorage.setItem('sentinelKey',k.trim()); return true; } return false; }
+async function apiRequest(path,options={},retried=false){
   try{
-    const response=await fetch(API+path,options);
+    const headers={...(options.headers||{})}; if(apiKey()) headers['X-API-Key']=apiKey();
+    const response=await fetch(API+path,{...options,headers});
+    if(response.status===401 && !retried){ sessionStorage.removeItem('sentinelKey'); if(askKey()) return apiRequest(path,options,true); }
     if(!response.ok){ console.error(`${options.method||'GET'} ${API+path} failed with HTTP ${response.status}`); return null; }
     return await response.json();
   }catch(error){ console.error(`${options.method||'GET'} ${API+path} failed`,error); return null; }
@@ -552,13 +578,14 @@ function fp(n){ return (n*100).toFixed(2)+'%'; }
 function showState(id,message,isError=false){ const el=document.getElementById(id); if(el) el.innerHTML=`<div class="state-message${isError?' error':''}">${message}</div>`; }
 function setValueState(id,message,isError=false){ const el=document.getElementById(id); if(!el) return; el.textContent=message; el.classList.add('state-copy'); if(isError) el.classList.add('error-copy'); else el.classList.remove('error-copy'); }
 function setValue(id,value){ const el=document.getElementById(id); if(!el) return; el.textContent=value; el.classList.remove('state-copy','error-copy'); }
+function setMetric(id,value,sub){ const el=document.getElementById(id); if(!el) return; el.classList.remove('state-copy','error-copy'); el.textContent=value; if(sub){ const s=document.createElement('small'); s.textContent=sub; el.appendChild(s); } }
 function bb(isFraud){ return isFraud?`<span class="badge b-fraud">⚠ FRAUD</span>`:`<span class="badge b-legit">✓ LEGIT</span>`; }
 function rb(lvl){ const m={HIGH:'b-h',MEDIUM:'b-m',LOW:'b-l'}; return `<span class="badge ${m[lvl]||'b-l'}">${lvl}</span>`; }
-function pb(prob){ const p=(prob*100).toFixed(0); const c=prob>.7?'#ff2d55':prob>.4?'#ff9500':'#00ff88'; return `<span style="display:inline-block;width:60px;height:4px;background:#152840;border-radius:2px;vertical-align:middle;margin-right:4px;overflow:hidden"><span style="display:block;height:100%;width:${p}%;background:${c};border-radius:2px"></span></span>${p}%`; }
+function pb(prob){ const p=(prob*100).toFixed(0); const c=prob>=MODEL_T?'#ff2d55':prob>=MODEL_T/2?'#ff9500':'#00ff88'; return `<span style="display:inline-block;width:60px;height:4px;background:#152840;border-radius:2px;vertical-align:middle;margin-right:4px;overflow:hidden"><span style="display:block;height:100%;width:${p}%;background:${c};border-radius:2px"></span></span>${p}%`; }
 function ta(ts){ const d=Math.floor((Date.now()-new Date(ts))/1000); if(d<60) return d+'s'; if(d<3600) return Math.floor(d/60)+'m'; return Math.floor(d/3600)+'h'; }
 
 // ── navigation ─────────────────────────────────────────────
-const titles = { overview:'DASHBOARD', monitor:'LIVE MONITOR', analyzer:'ANALYZER', performance:'MODEL', shap:'SHAP EXPLAINABILITY' };
+const titles = { overview:'DASHBOARD', monitor:'REPLAY MONITOR', analyzer:'ANALYZER', performance:'MODEL', shap:'SHAP EXPLAINABILITY' };
 const routeSections = { dash:'overview', ana:'analyzer', mod:'performance' };
 function navigateTo(route, updateHash=true){
   if(!routeSections[route]) route='dash';
@@ -587,15 +614,12 @@ setInterval(()=>{ document.getElementById('clock').textContent=new Date().toLoca
 
 // ── API health ─────────────────────────────────────────────
 async function checkHealth(){
-  const d=await get('/health');
   const el=document.getElementById('apiStatus');
-  if(!d||d.status!=='online'){
-    el.dataset.state='error';
-    el.textContent='API unreachable';
-    return;
-  }
+  let d=null;
+  try{ d=await (await fetch(API+'/health')).json(); }catch(e){ /* unreachable */ }
+  if(!d){ el.dataset.state='error'; el.textContent='API unreachable'; return; }
   el.dataset.state=d.model_loaded?'online':'demo';
-  el.textContent=d.model_loaded?'API online · model loaded':'API online · demo mode';
+  el.textContent=d.model_loaded?`API ready · model ${d.model_version}`:'API up · model NOT loaded (503)';
 }
 checkHealth(); setInterval(checkHealth,10000);
 
@@ -630,14 +654,15 @@ async function loadOverview(){
     await loadOverviewTxns();
     return;
   }
-  setValue('ovTotal',d.total_transactions.toLocaleString());
-  setValue('ovFraud',d.fraud_detected.toLocaleString());
-  setValue('ovFraudPct',fp(d.fraud_rate)+' fraud rate');
-  setValue('ovSaved',fc(d.amount_saved));
+  MODEL_T=d.threshold; showBanner(d);
+  setValue('ovTotal',d.replay_total.toLocaleString());
+  setValue('ovFraud',d.replay_flagged.toLocaleString());
+  setValue('ovFraudPct',fp(d.replay_flag_rate)+' flagged · '+d.replay_true_frauds_caught+' true frauds caught');
+  setValue('ovSaved',fc(d.replay_fraud_amount_caught));
   setValue('ovMs',d.avg_response_ms+'ms');
-  if(d.total_transactions>0){
+  if(d.replay_total>0){
     document.getElementById('donutState').hidden=true;
-    doughnut('donutChart',['Legitimate','Fraud'],[d.total_transactions-d.fraud_detected,d.fraud_detected],['#00d4ff','#ff5875']);
+    doughnut('donutChart',['Not flagged','Flagged'],[d.replay_total-d.replay_flagged,d.replay_flagged],['#00d4ff','#ff5875']);
   } else {
     document.getElementById('donutState').hidden=false;
     document.getElementById('donutState').textContent='Waiting for scored transactions…';
@@ -647,11 +672,11 @@ async function loadOverview(){
 
 async function loadOverviewTxns(){
   showState('ovTxnWrap','Waiting for data…');
-  const d=await get('/stream/live');
-  if(!d){ showState('ovTxnWrap','API unreachable. Check the API server and try again.',true); return; }
-  if(!d.transactions?.length){ showState('ovTxnWrap',d.demo_mode?'No scored transactions are available in demo mode.':'Waiting for scored transactions…'); return; }
-  const rows=d.transactions.map(t=>`<tr><td style="color:var(--cyan)">${t.id}</td><td>${t.merchant}</td><td>${t.location}</td><td>${CURRENCY_SYMBOL}${t.amount.toLocaleString()}</td><td>${pb(t.fraud_probability)}</td><td>${rb(t.risk_level)}</td><td>${bb(t.is_fraud)}</td><td style="color:var(--txt3)">${ta(t.timestamp)}</td></tr>`).join('');
-  document.getElementById('ovTxnWrap').innerHTML=`<div class="table-scroll"><table class="tbl"><thead><tr><th>TXN ID</th><th>MERCHANT · SIMULATED</th><th>LOCATION · SIMULATED</th><th>AMOUNT</th><th>PROB</th><th>RISK</th><th>STATUS</th><th>TIME</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  const d=await get('/replay/feed');
+  if(!d){ showState('ovTxnWrap','API unreachable or not ready. Check the API server and try again.',true); return; }
+  if(!d.transactions?.length){ showState('ovTxnWrap','No replay rows available.'); return; }
+  const rows=d.transactions.map(t=>`<tr><td style="color:var(--cyan)">${t.id}</td><td>${CURRENCY_SYMBOL}${t.amount.toLocaleString()}</td><td>${pb(t.fraud_probability)}</td><td>${rb(t.risk_level)}</td><td>${bb(t.is_fraud)}</td><td>${t.true_label===1?'<span class="badge b-fraud">FRAUD</span>':'<span class="badge b-legit">legit</span>'}</td></tr>`).join('');
+  document.getElementById('ovTxnWrap').innerHTML=`<div class="table-scroll"><table class="tbl"><thead><tr><th>ROW ID</th><th>AMOUNT</th><th>PROB</th><th>RISK</th><th>MODEL VERDICT</th><th>TRUE LABEL</th></tr></thead><tbody>${rows}</tbody></table></div><div style="font-family:var(--mono);font-size:13px;color:var(--txt3);margin-top:8px">Replay of held-out test data scored by the loaded model — not live traffic.</div>`;
 }
 
 // ══════════════════════════════════════════════════════════
@@ -668,14 +693,14 @@ function startMonitor(){ if(!monitorStarted){ monitorStarted=true; fetchMonitor(
 
 async function fetchMonitor(){
   if(paused) return;
-  const d=await get('/stream/live');
+  const d=await get('/replay/feed');
   if(!d){ showState('liveFeed','API unreachable. Check the API server and try again.',true); document.getElementById('trendState').textContent='API unreachable'; document.getElementById('trendState').classList.add('error'); return; }
   const txns=(d.transactions||[]).filter(t=>!monitorSeenIds.has(t.id));
   if(!d.transactions?.length){
     document.getElementById('trendState').hidden=false;
     document.getElementById('trendState').classList.remove('error');
-    document.getElementById('trendState').textContent=d.demo_mode?'No scored transactions are available in demo mode.':'Waiting for scored transactions…';
-    if(!monitorTransactions.length) showState('liveFeed',d.demo_mode?'No scored transactions are available in demo mode.':'Waiting for scored transactions…');
+    document.getElementById('trendState').textContent='No replay rows available.';
+    if(!monitorTransactions.length) showState('liveFeed','No replay rows available.');
   }
   txns.forEach(t=>{ monitorSeenIds.add(t.id); monitorTransactions.push(t); });
   mTotal+=txns.length; const nf=txns.filter(t=>t.is_fraud).length; const nh=txns.filter(t=>t.risk_level==='HIGH').length;
@@ -700,8 +725,8 @@ async function fetchMonitor(){
       trendChart=lineChart('trendChart',trendLabels,[{label:'Avg Fraud %',data:trendData,borderColor:'#ff2d55',backgroundColor:'rgba(255,45,85,.07)',tension:.4,fill:true,pointRadius:2,pointBackgroundColor:'#ff2d55'}]);
     } else { trendChart.data.labels=trendLabels; trendChart.data.datasets[0].data=trendData; trendChart.update('none'); }
   }
-  if(monitorTransactions.length) document.getElementById('liveFeed').innerHTML=monitorTransactions.slice(-8).reverse().map(t=>`<div class="feed-item ${t.is_fraud?'fraud-row':''}"><span style="color:var(--cyan)">${t.id}</span><span>${t.merchant}<br><span style="color:var(--txt3);font-size:14px">${t.location} · simulated</span></span><span>${CURRENCY_SYMBOL}${t.amount.toLocaleString()}</span><span>${pb(t.fraud_probability)}</span><span>${bb(t.is_fraud)}</span><span style="color:var(--txt3)">${ta(t.timestamp)}</span></div>`).join('');
-  txns.filter(t=>t.is_fraud).forEach(t=>{ const p=document.getElementById('alertPanel'); const noAlerts=p.querySelector('[data-no-alerts]'); if(noAlerts) noAlerts.remove(); const el=document.createElement('div'); el.className='alert-item'; el.innerHTML=`⚠ <strong>${t.id}</strong> — ${CURRENCY_SYMBOL}${t.amount.toLocaleString()} at ${t.merchant} — ${(t.fraud_probability*100).toFixed(1)}%`; p.prepend(el); if(p.children.length>7) p.lastChild.remove(); });
+  if(monitorTransactions.length) document.getElementById('liveFeed').innerHTML=monitorTransactions.slice(-8).reverse().map(t=>`<div class="feed-item ${t.is_fraud?'fraud-row':''}"><span style="color:var(--cyan)">${t.id}</span><span>true label: ${t.true_label===1?'FRAUD':'legit'}</span><span>${CURRENCY_SYMBOL}${t.amount.toLocaleString()}</span><span>${pb(t.fraud_probability)}</span><span>${bb(t.is_fraud)}</span><span style="color:var(--txt3)">replay</span></div>`).join('');
+  txns.filter(t=>t.is_fraud).forEach(t=>{ const p=document.getElementById('alertPanel'); const noAlerts=p.querySelector('[data-no-alerts]'); if(noAlerts) noAlerts.remove(); const el=document.createElement('div'); el.className='alert-item'; el.innerHTML=`⚠ <strong>${t.id}</strong> — ${CURRENCY_SYMBOL}${t.amount.toLocaleString()} (true label: ${t.true_label===1?'fraud':'legit'}) — ${(t.fraud_probability*100).toFixed(1)}%`; p.prepend(el); if(p.children.length>7) p.lastChild.remove(); });
 }
 
 // ══════════════════════════════════════════════════════════
@@ -744,7 +769,7 @@ function applyFeaturePaste(){
 }
 
 function clearAnalyzer(){
-  document.getElementById('inpAmount').value='0';
+  document.getElementById('inpAmount').value='0'; document.getElementById('inpHour').value='14';
   for(let i=1;i<=28;i++){ const el=document.getElementById('V'+i); if(el) el.value='0'; }
   document.getElementById('featurePaste').value='';
   document.getElementById('pasteStatus').textContent='Paste 1–28 values; omitted features will be set to 0.';
@@ -757,7 +782,7 @@ function updateGauge(prob){
   const ctx=document.getElementById('gaugeChart'); if(!ctx) return;
   if(ctx._c) ctx._c.destroy();
   const p=prob===null?0:prob;
-  const color=p>.7?'#ff2d55':p>.4?'#ff9500':'#00ff88';
+  const color=p>=MODEL_T?'#ff2d55':p>=MODEL_T/2?'#ff9500':'#00ff88';
   ctx._c=new Chart(ctx,{ type:'doughnut', data:{datasets:[{data:[p*100,100-p*100],backgroundColor:[color,'#152840'],borderWidth:0}]}, options:{ responsive:false, circumference:180, rotation:-90, cutout:'74%', plugins:{legend:{display:false},tooltip:{enabled:false}} } });
   const lbl=document.getElementById('gaugeLbl');
   lbl.textContent=prob===null?'Waiting for data…':(p*100).toFixed(1)+'%';
@@ -767,9 +792,10 @@ updateGauge(null);
 
 async function runAnalyze(){
   const btn=document.getElementById('analyzeBtn'); btn.textContent='⟳...'; btn.disabled=true;
-  const payload={Amount:parseFloat(document.getElementById('inpAmount').value)||0};
+  const hour=Math.min(23,Math.max(0,parseInt(document.getElementById('inpHour').value)||0));
+  const payload={Amount:Math.max(0,parseFloat(document.getElementById('inpAmount').value)||0),Time:hour*3600};
   for(let i=1;i<=28;i++) payload['V'+i]=parseFloat(document.getElementById('V'+i)?.value)||0;
-  const r=await post('/predict',payload);
+  const r=await post('/predict?explain=true',payload);
   btn.textContent='⬡ ANALYZE'; btn.disabled=false;
   if(!r){ showState('analyzeResult','API unreachable. Check the API server and try again.',true); return; }
   updateGauge(r.fraud_probability);
@@ -784,12 +810,13 @@ async function runAnalyze(){
     <div class="mrow"><span class="mname">Fraud Prob</span><span class="mval" style="color:${color}">${(r.fraud_probability*100).toFixed(2)}%</span></div>
     <div class="mrow"><span class="mname">Risk Level</span><span>${rb(r.risk_level)}</span></div>
     <div class="mrow"><span class="mname">Verdict</span><span>${bb(r.is_fraud)}</span></div>
-    ${r.demo_mode?'<div style="margin-top:8px;font-family:var(--mono);font-size:14px;color:var(--txt3)">⚠ Demo mode — model.pkl not loaded</div>':''}`;
+    <div class="mrow"><span class="mname">Threshold</span><span class="mval">${(r.threshold*100).toFixed(2)}%</span></div>
+    ${(r.reasons&&r.reasons.length)?`<div style="margin-top:10px;font-family:var(--mono);font-size:13px;color:var(--txt2)"><b>Reason codes</b> (model attributions on anonymised features):${r.reasons.map(x=>`<div>• <span style="color:var(--cyan)">${x.code}</span> — ${x.description}</div>`).join('')}</div>`:''}`;
 }
 
 async function runBatch(){
-  showState('batchResult','Scoring batch…');
-  const transactions=Array.from({length:10},()=>{ const o={Amount:Math.random()*3000+10}; for(let i=1;i<=28;i++) o['V'+i]=+(Math.random()*6-3).toFixed(4); return o; });
+  showState('batchResult','Scoring 10 random synthetic inputs (not real transactions)…');
+  const transactions=Array.from({length:10},()=>{ const o={Amount:Math.random()*300+10,Time:Math.floor(Math.random()*86400)}; for(let i=1;i<=28;i++) o['V'+i]=+(Math.random()*6-3).toFixed(4); return o; });
   const r=await post('/predict/batch',{transactions});
   if(!r){ showState('batchResult','API unreachable. Check the API server and try again.',true); return; }
   document.getElementById('batchResult').innerHTML=`
@@ -815,41 +842,49 @@ async function loadPerformance(){
     document.getElementById('cmState').classList.add('error');
     return;
   }
-  if(d.source==='unavailable'){
+  MODEL_T=d.threshold; showBanner(d);
+  if(!d.confusion){
     ['pAuc','pAcc','pPrec','pRec','pF1'].forEach(id=>setValueState(id,'Metrics unavailable'));
-    showState('metricBars','No training metrics available. Rerun the training notebook to create model/metrics.json.');
+    showState('metricBars','No evaluation metrics available. Run `python -m src.train` to create model/metrics.json.');
     document.getElementById('cmGrid').hidden=true;
     document.getElementById('cmState').hidden=false;
     document.getElementById('cmState').textContent='Confusion counts unavailable until test metrics are saved.';
     document.getElementById('cmState').classList.remove('error');
     return;
   }
-  setValue('pAuc',d.roc_auc.toFixed(4));
-  setValue('pAcc',d.model_accuracy.toFixed(4));
-  setValue('pPrec',d.precision.toFixed(3));
-  setValue('pRec',d.recall.toFixed(3));
-  setValue('pF1',d.f1_score.toFixed(3));
-  const metrics=[{n:'ROC-AUC',v:d.roc_auc,c:'#00d4ff'},{n:'Accuracy',v:d.model_accuracy,c:'#00ff88'},{n:'Precision',v:d.precision,c:'#ff9500'},{n:'Recall',v:d.recall,c:'#ff2d55'},{n:'F1 Score',v:d.f1_score,c:'#ffd60a'}];
+  setValue('pAuc',d.roc_auc.toFixed(4)); const ci=(k)=>d.ci95&&d.ci95[k]?`95% CI ${d.ci95[k][0].toFixed(2)}–${d.ci95[k][1].toFixed(2)}`:'';
+  setValue('pAcc',d.accuracy.toFixed(4));
+  setMetric('pPrec',d.precision.toFixed(3),ci('precision'));
+  setMetric('pRec',d.recall.toFixed(3),ci('recall'));
+  setMetric('pF1',d.f1.toFixed(3),ci('f1'));
+  const metrics=[{n:'ROC-AUC',v:d.roc_auc,c:'#00d4ff'},{n:'PR-AUC',v:d.pr_auc,c:'#00ff88'},{n:'Precision',v:d.precision,c:'#ff9500'},{n:'Recall',v:d.recall,c:'#ff2d55'},{n:'F1 Score',v:d.f1,c:'#ffd60a'}];
   document.getElementById('metricBars').innerHTML=metrics.map(m=>`<div style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;margin-bottom:5px"><span style="font-family:var(--mono);font-size:14px;color:var(--txt2)">${m.n}</span><span style="font-family:var(--display);font-size:14px;font-weight:700;color:${m.c}">${(m.v*100).toFixed(2)}%</span></div><div class="ptrack" style="margin:0;height:7px"><div class="pfill" style="width:${m.v*100}%;background:${m.c}"></div></div></div>`).join('');
-  const tot=d.total_transactions, tp=Math.round(d.fraud_detected*d.recall), fp2=Math.round(d.fraud_detected*(1-d.precision)), fn=d.fraud_detected-tp, tn=tot-tp-fp2-fn;
-  document.getElementById('cmTN').textContent=tn.toLocaleString();
-  document.getElementById('cmFP').textContent=fp2.toLocaleString();
-  document.getElementById('cmFN').textContent=fn.toLocaleString();
-  document.getElementById('cmTP').textContent=tp.toLocaleString();
+  const cm=d.confusion;
+  document.getElementById('cmTN').textContent=cm.tn.toLocaleString();
+  document.getElementById('cmFP').textContent=cm.fp.toLocaleString();
+  document.getElementById('cmFN').textContent=cm.fn.toLocaleString();
+  document.getElementById('cmTP').textContent=cm.tp.toLocaleString();
   document.getElementById('cmGrid').hidden=false;
   document.getElementById('cmState').hidden=true;
-  updateThresh(0.5);
+  const sl=document.getElementById('threshSlider'); sl.value=Math.min(0.9,Math.max(0.01,d.threshold)).toFixed(2);
+  updateThresh(sl.value);
 }
 
+let threshTimer=null;
 function updateThresh(v){
   document.getElementById('threshVal').textContent=parseFloat(v).toFixed(2);
-  const prec=Math.min(.99,.7+v*.35).toFixed(3), rec=Math.max(.4,1-v*.7).toFixed(3);
-  const f1=(2*prec*rec/(+prec+ +rec)).toFixed(3);
-  document.getElementById('threshStats').innerHTML=`
-    <div class="mrow"><span class="mname">Precision</span><span class="mval">${prec}</span></div>
-    <div class="mrow"><span class="mname">Recall</span><span class="mval" style="color:var(--orange)">${rec}</span></div>
-    <div class="mrow"><span class="mname">F1 Score</span><span class="mval" style="color:var(--yellow)">${f1}</span></div>
-    <div class="mrow"><span class="mname">Recommendation</span><span style="font-family:var(--mono);font-size:14px;color:${+v>.6?'var(--orange)':+v<.3?'var(--red)':'var(--green)'}">${+v>.6?'High precision, may miss fraud':+v<.3?'High recall, many false alarms':'Balanced — recommended'}</span></div>`;
+  clearTimeout(threshTimer);
+  threshTimer=setTimeout(async()=>{
+    const r=await get('/replay/threshold?value='+encodeURIComponent(v));
+    if(!r){ showState('threshStats','API unreachable or not ready.',true); return; }
+    document.getElementById('threshStats').innerHTML=`
+    <div class="mrow"><span class="mname">Precision</span><span class="mval">${r.precision.toFixed(3)}</span></div>
+    <div class="mrow"><span class="mname">Recall</span><span class="mval" style="color:var(--orange)">${r.recall.toFixed(3)}</span></div>
+    <div class="mrow"><span class="mname">F1 Score</span><span class="mval" style="color:var(--yellow)">${r.f1.toFixed(3)}</span></div>
+    <div class="mrow"><span class="mname">TP / FP / FN${r.exact?' (exact)':r.weighted?' (est.)':''}</span><span class="mval">${r.tp} / ${r.fp} / ${r.fn}</span></div>
+    <div class="mrow"><span class="mname">Expected cost</span><span class="mval">${CURRENCY_SYMBOL}${r.expected_cost.toLocaleString()}</span></div>
+    <div style="font-family:var(--mono);font-size:13px;color:var(--txt3);margin-top:8px">Model's cost-optimal threshold: ${r.model_threshold.toFixed(3)}. ${r.note}</div>`;
+  },150);
 }
 
 // ══════════════════════════════════════════════════════════
@@ -879,30 +914,30 @@ async function loadShap(){
   document.getElementById('topFeatures').innerHTML=feats.slice(0,7).map((f,i)=>`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(21,40,64,.4)"><span style="font-family:var(--display);font-size:14px;color:var(--txt3);width:16px">#${i+1}</span><span style="font-family:var(--mono);font-size:14px;color:var(--cyan);width:36px">${f.feature}</span><div class="ptrack" style="margin:0;flex:1"><div class="pfill" style="width:${(f.importance/feats[0].importance*100).toFixed(0)}%;background:${i<3?'#ff2d55':'#00d4ff'}"></div></div><span style="font-family:var(--mono);font-size:14px;color:var(--txt3);width:46px;text-align:right">${f.importance.toFixed(4)}</span></div>`).join('');
 }
 
-function explainRandom(){
-  const fraud=Math.random()<.35;
-  const feats=['V14','V4','V12','V10','V17','V3','V11','V16','V7','Amount'];
-  const shapVals=fraud?[.35,.28,.18,.14,.12,-.05,-.04,.08,.07,.06]:[-.12,-.08,-.06,-.05,-.04,.08,.06,-.03,-.03,-.02];
-  const vals=fraud?[-7.2,5.1,-4.1,-3.3,-3.8,1.2,2.1,-1.9,-2.0,142]:[-.3,.1,.2,-.1,.0,.8,-.2,.3,-.1,1823];
-  const prob=fraud?(.65+Math.random()*.3):(.05+Math.random()*.2);
-  const color=fraud?'var(--red)':'var(--green)';
+async function explainReplay(flagged){
+  showState('localShap','Computing TreeSHAP…');
+  const r=await get('/replay/explain?flagged='+(flagged?'true':'false'));
+  if(!r){ showState('localShap','No matching replay row, or API unreachable.',true); return; }
+  const color=r.is_fraud?'var(--red)':'var(--green)';
+  const max=Math.max(...r.contributions.map(c=>Math.abs(c.contribution)))||1;
   document.getElementById('localShap').innerHTML=`
-    <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;padding:14px;background:var(--bg2);border-radius:7px;border:1px solid ${fraud?'rgba(255,45,85,.3)':'rgba(0,255,136,.2)'}">
-      <div style="font-size:32px">${fraud?'⚠':'✓'}</div>
-      <div>
-        <div style="font-family:var(--display);font-size:14px;font-weight:900;color:${color}">${fraud?'FRAUD DETECTED':'TRANSACTION CLEAR'}</div>
-        <div style="font-family:var(--mono);font-size:14px;color:var(--txt3)">Fraud Probability: ${(prob*100).toFixed(1)}% • Amount: ${CURRENCY_SYMBOL}${vals[9].toFixed(2)}</div>
-      </div>
-      <div style="margin-left:auto;text-align:right">
-        <div style="font-family:var(--display);font-size:24px;font-weight:900;color:${color}">${(prob*100).toFixed(1)}%</div>
-        <div style="font-family:var(--mono);font-size:14px;color:var(--txt3)">FRAUD SCORE</div>
-      </div>
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;padding:14px;background:var(--bg2);border-radius:7px;border:1px solid ${r.is_fraud?'rgba(255,45,85,.3)':'rgba(0,255,136,.2)'}">
+      <div style="font-size:32px">${r.is_fraud?'⚠':'✓'}</div>
+      <div><div style="font-family:var(--display);font-size:14px;font-weight:900;color:${color}">${r.is_fraud?'FLAGGED BY MODEL':'NOT FLAGGED'}</div>
+      <div style="font-family:var(--mono);font-size:14px;color:var(--txt3)">Replay row #${r.row_index} • Amount: ${CURRENCY_SYMBOL}${r.amount.toFixed(2)} • true label: ${r.true_label===1?'FRAUD':'legit'}</div></div>
+      <div style="margin-left:auto;text-align:right"><div style="font-family:var(--display);font-size:24px;font-weight:900;color:${color}">${(r.fraud_probability*100).toFixed(2)}%</div>
+      <div style="font-family:var(--mono);font-size:14px;color:var(--txt3)">CALIBRATED PROB</div></div>
     </div>
-    <div style="font-family:var(--mono);font-size:14px;color:var(--txt3);letter-spacing:2px;margin-bottom:10px">FEATURE CONTRIBUTIONS</div>
-    ${feats.map((f,i)=>{ const sv=shapVals[i]*(0.8+Math.random()*.4); const pct=Math.min(Math.abs(sv)/.4*50,50); return `<div class="shap-row"><span class="shap-f">${f}</span><div class="shap-bc"><div class="${sv>0?'shap-pos':'shap-neg'}" style="width:${pct}%"></div></div><span class="shap-v" style="color:${sv>0?'var(--red)':'var(--cyan)'}">${sv>0?'+':''}${sv.toFixed(4)}</span></div>`; }).join('')}
-    <div style="margin-top:14px;font-family:var(--mono);font-size:14px;color:var(--txt3);padding:10px;background:var(--bg2);border-radius:5px;line-height:1.8">
-      ${fraud?`<span style="color:var(--red)">⚠ FRAUD:</span> Primarily flagged due to V14 (${vals[0].toFixed(2)}) — highly negative, strong fraud signal. Combined with elevated V4 and V12, model is confident.`:`<span style="color:var(--green)">✓ LEGIT:</span> V14 and key features are within normal ranges. High amount (${CURRENCY_SYMBOL}${vals[9].toFixed(0)}) is not suspicious given normal feature pattern.`}
-    </div>`;
+    <div style="font-family:var(--mono);font-size:14px;color:var(--txt3);letter-spacing:2px;margin-bottom:10px">TOP 10 TREESHAP CONTRIBUTIONS (LOG-ODDS)</div>
+    ${r.contributions.map(c=>{ const pct=Math.min(Math.abs(c.contribution)/max*50,50); return `<div class="shap-row"><span class="shap-f">${c.feature}</span><div class="shap-bc"><div class="${c.contribution>0?'shap-pos':'shap-neg'}" style="width:${pct}%"></div></div><span class="shap-v" style="color:${c.contribution>0?'var(--red)':'var(--cyan)'}">${c.contribution>0?'+':''}${c.contribution.toFixed(4)}</span></div>`; }).join('')}
+    ${r.reasons.length?`<div style="margin-top:14px;font-family:var(--mono);font-size:13px;color:var(--txt2);padding:10px;background:var(--bg2);border-radius:5px;line-height:1.8"><b>Reason codes</b>${r.reasons.map(x=>`<div>• <span style="color:var(--cyan)">${x.code}</span> — ${x.description}</div>`).join('')}</div>`:''}
+    <div style="margin-top:10px;font-family:var(--mono);font-size:12px;color:var(--txt3)">${r.note}</div>`;
+}
+
+function showBanner(d){
+  const el=document.getElementById('dataBanner'); if(!el) return;
+  if(d.synthetic_data){ el.hidden=false; el.textContent='⚠ SYNTHETIC DEMO DATA — metrics below do not describe real-world fraud performance. Retrain on the real dataset (see README).'; }
+  else el.hidden=true;
 }
 
 // ── Init ───────────────────────────────────────────────────

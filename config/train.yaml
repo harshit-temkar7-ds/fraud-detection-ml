@@ -1,0 +1,42 @@
+# Training configuration for SENTINEL. Every number in README/MODEL_CARD is produced from a run of this config.
+seed: 42
+
+data:
+  path: data/creditcard.csv        # real Kaggle ULB dataset (see scripts/download_data.py)
+  synthetic_path: data/synthetic_creditcard.csv   # used only with --synthetic
+
+split:                              # time-ordered: earliest rows train, latest rows test
+  train_frac: 0.60
+  val_frac: 0.20                    # calibration + threshold selection; the rest (0.20) is the untouched test set
+
+cv:
+  folds: 5                          # stratified K-fold on the TRAIN part only (model selection)
+  min_precision: 0.80               # for the "recall at fixed precision" metric
+
+strategies: [none, scale_pos_weight, smote]
+smote_sampling_strategy: 0.2        # minority/majority ratio after SMOTE
+
+xgb:
+  n_estimators: 250
+  max_depth: 4
+  learning_rate: 0.08
+  subsample: 0.8
+  colsample_bytree: 0.8
+  min_child_weight: 1
+  reg_lambda: 1.0
+  tree_method: hist
+  n_jobs: 2
+
+calibration:
+  method: auto                      # auto | isotonic | sigmoid | none
+  min_positives_for_isotonic: 300   # 'auto' uses isotonic only if validation has at least this many frauds
+
+costs:
+  false_negative: auto              # 'auto' = mean fraud Amount in the training split, or a number
+  false_positive: 5.0               # cost of reviewing one legitimate transaction
+
+bootstrap:
+  n: 1000
+  ci: 0.95
+
+replay_rows: 3000                   # replay sample size: ALL test frauds + random legit rows, time-ordered
