@@ -1,0 +1,158 @@
+{
+  "model_version": "20261107-184917",
+  "sentinel_version": "2.0.0",
+  "trained_at": "2026-11-07T18:49:17.598505+00:00",
+  "strategy": "scale_pos_weight",
+  "calibration_method": "sigmoid",
+  "threshold": 0.0717072168369875,
+  "risk_bands": {
+    "medium_from": 0.03585360841849375,
+    "high_from": 0.0717072168369875
+  },
+  "costs": {
+    "false_negative": 111.57672222222222,
+    "false_positive": 5.0,
+    "false_negative_source": "mean fraud amount in train split"
+  },
+  "raw_input_features": [
+    "V1",
+    "V2",
+    "V3",
+    "V4",
+    "V5",
+    "V6",
+    "V7",
+    "V8",
+    "V9",
+    "V10",
+    "V11",
+    "V12",
+    "V13",
+    "V14",
+    "V15",
+    "V16",
+    "V17",
+    "V18",
+    "V19",
+    "V20",
+    "V21",
+    "V22",
+    "V23",
+    "V24",
+    "V25",
+    "V26",
+    "V27",
+    "V28",
+    "Amount",
+    "Time"
+  ],
+  "data": {
+    "source": "user-provided dataset",
+    "synthetic": false,
+    "file": "creditcard.csv",
+    "sha256": "76274b691b16a6c49d3f159c883398e03ccd6d1ee12d9d8ee38f4b4b98551a89",
+    "rows": 284807,
+    "frauds": 492,
+    "split_rows": {
+      "train": 170884,
+      "val": 56961,
+      "test": 56962
+    },
+    "split_frauds": {
+      "train": 360,
+      "val": 57,
+      "test": 75
+    },
+    "split_kind": "time-ordered (train earliest, test latest)"
+  },
+  "config": {
+    "seed": 42,
+    "data": {
+      "path": "data/creditcard.csv",
+      "synthetic_path": "data/synthetic_creditcard.csv"
+    },
+    "split": {
+      "train_frac": 0.6,
+      "val_frac": 0.2
+    },
+    "cv": {
+      "folds": 5,
+      "min_precision": 0.8
+    },
+    "strategies": [
+      "none",
+      "scale_pos_weight",
+      "smote"
+    ],
+    "smote_sampling_strategy": 0.2,
+    "xgb": {
+      "n_estimators": 250,
+      "max_depth": 4,
+      "learning_rate": 0.08,
+      "subsample": 0.8,
+      "colsample_bytree": 0.8,
+      "min_child_weight": 1,
+      "reg_lambda": 1.0,
+      "tree_method": "hist",
+      "n_jobs": 2
+    },
+    "calibration": {
+      "method": "auto",
+      "min_positives_for_isotonic": 300
+    },
+    "costs": {
+      "false_negative": "auto",
+      "false_positive": 5.0
+    },
+    "bootstrap": {
+      "n": 1000,
+      "ci": 0.95
+    },
+    "replay_rows": 3000
+  },
+  "schema_version": 2,
+  "feature_names": [
+    "log_amount",
+    "V1",
+    "V2",
+    "V3",
+    "V4",
+    "V5",
+    "V6",
+    "V7",
+    "V8",
+    "V9",
+    "V10",
+    "V11",
+    "V12",
+    "V13",
+    "V14",
+    "V15",
+    "V16",
+    "V17",
+    "V18",
+    "V19",
+    "V20",
+    "V21",
+    "V22",
+    "V23",
+    "V24",
+    "V25",
+    "V26",
+    "V27",
+    "V28",
+    "hour_sin",
+    "hour_cos"
+  ],
+  "library_versions": {
+    "python": "3.14.8",
+    "xgboost": "3.4.1",
+    "numpy": "2.5.4",
+    "pandas": "3.0.6"
+  },
+  "artifact_sha256": {
+    "xgb_model.json": "45be4757b558ac75f486208f791ab23bb9ed6f7c4495d7b51bfbe83a9f16eb31",
+    "preprocess.json": "dc2ce87936d2724068916f26ce6d640ed44fa6b09a49017fb3b068b533fd576e",
+    "calibrator.json": "a0af881e0607e9078822c6188f289ce553bd48f6fbd029b99b3fc7a7c9652357"
+  }
+}

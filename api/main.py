@@ -1,383 +1,391 @@
-import logging
+"""SENTINEL scoring API (create_app factory).
+
+Run:  API_KEYS=dev-key-change-me uvicorn api.main:app --port 8000
+"""
+
 import json
-import os
-import random
+import logging
 import threading
 import time
 import uuid
-from datetime import datetime, timedelta
-from typing import List
+from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 
-import joblib
 import numpy as np
 import pandas as pd
-import shap
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
-from pydantic import BaseModel
+from fastapi.responses import FileResponse, JSONResponse
+
+from src import __version__
+from src.decision import risk_level
+from src.features import RAW_FEATURES, make_features
+from src.model_bundle import ArtifactError, ModelBundle
+from src.reasons import DISCLAIMER, build_reasons
+
+from .monitoring import Monitor
+from .schemas import BatchRequest, BatchResponse, Prediction, Transaction
+from .security import AccessDep, SlidingWindowLimiter, configure_logging, new_request_id, request_id_var
+from .settings import Settings
+
+logger = logging.getLogger("sentinel.api")
 
 
-logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
-logger = logging.getLogger(__name__)
-
-app = FastAPI(title="SENTINEL Fraud Detection API", version="1.0.0")
-
-allowed_origins = os.getenv(
-    "ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:8000"
-)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[origin.strip() for origin in allowed_origins.split(",") if origin.strip()],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-FRONTEND = os.path.join(os.path.dirname(__file__), "..", "frontend", "dashboard.html")
-MODEL_PATH = os.path.abspath(
-    os.getenv("MODEL_DIR", os.path.join(os.path.dirname(__file__), "..", "model"))
-)
-
-model = scaler = feature_names = explainer = None
-test_sample = None
-test_probabilities = np.array([], dtype=float)
-test_amounts = np.array([], dtype=float)
-global_feature_importance = []
-predict_latency_total_ms = 0.0
-predict_latency_count = 0
-latency_lock = threading.Lock()
-live_offset = 0
-live_offset_lock = threading.Lock()
+def _now() -> str:
+    return datetime.now(timezone.utc).isoformat()
 
 
-def load_model():
-    global model, scaler, feature_names, explainer
-    global test_sample, test_probabilities, test_amounts, global_feature_importance
+class State:
+    """Everything loaded at startup lives here (no module-level globals)."""
+
+    def __init__(self):
+        self.bundle = None
+        self.load_error = None
+        self.metrics = {}
+        self.reference = {}
+        self.replay = None            # DataFrame incl. Class
+        self.replay_proba = np.array([])
+        self.replay_importance = []
+        self.replay_offset = 0
+        self.explain_offset = 0
+        self.replay_lock = threading.Lock()
+        self.monitor = None
+
+
+def load_state(settings: Settings) -> State:
+    st = State()
+    d = settings.model_dir
     try:
-        model = joblib.load(os.path.join(MODEL_PATH, "xgb_fraud_model.pkl"))
-        scaler = joblib.load(os.path.join(MODEL_PATH, "amount_scaler.pkl"))
-        feature_names = joblib.load(os.path.join(MODEL_PATH, "feature_names.pkl"))
-    except Exception:
-        model = scaler = feature_names = explainer = None
-        logger.exception("Model not loaded; API is running in demo mode")
-        return
+        st.bundle = ModelBundle.load(d, strict_versions=settings.strict_versions)
+    except (ArtifactError, OSError, ValueError) as exc:
+        st.load_error = str(exc)
+        logger.error("Model not loaded: %s", exc)
+        st.monitor = Monitor({}, settings.drift_window, settings.drift_min_samples, settings.log_every)
+        return st
 
-    try:
-        # Construct this once and share it between prediction routes.
-        explainer = shap.TreeExplainer(model)
-        logger.info("Model and SHAP explainer loaded")
-    except Exception:
-        explainer = None
-        logger.exception("SHAP explainer not available")
+    for name, attr in (("metrics.json", "metrics"), ("reference_stats.json", "reference")):
+        try:
+            setattr(st, attr, json.loads((d / name).read_text(encoding="utf-8")))
+        except (OSError, json.JSONDecodeError):
+            logger.warning("%s unavailable", name)
+    st.monitor = Monitor(st.reference.get("psi_features", {}), settings.drift_window,
+                         settings.drift_min_samples, settings.log_every)
 
-    sample_path = os.path.join(MODEL_PATH, "test_sample.csv")
-    if not os.path.exists(sample_path):
-        logger.warning("Test sample not found at %s", sample_path)
-        return
-
-    try:
-        # test_sample.csv has already standardized Amount; do not scale it again.
-        test_sample = pd.read_csv(sample_path)
-        model_input = test_sample[feature_names] if feature_names else test_sample
-        test_probabilities = model.predict_proba(model_input)[:, 1]
-        test_amounts = scaler.inverse_transform(test_sample[["Amount"]]).ravel()
-
-        if explainer is not None:
-            shap_values = explainer.shap_values(model_input)
-            shap_values = shap_matrix(shap_values)
-            mean_absolute_values = np.abs(shap_values).mean(axis=0)
-            ranked = sorted(
-                zip(feature_names, mean_absolute_values),
-                key=lambda item: item[1],
-                reverse=True,
-            )[:15]
-            global_feature_importance = [
-                {"feature": name, "importance": round(float(value), 6)}
-                for name, value in ranked
-            ]
-        logger.info("Cached scores and SHAP importance for %d test rows", len(test_sample))
-    except Exception:
-        test_sample = None
-        test_probabilities = np.array([], dtype=float)
-        test_amounts = np.array([], dtype=float)
-        global_feature_importance = []
-        logger.exception("Could not score the shipped test sample")
+    replay_path = d / "replay_sample.csv"
+    if replay_path.exists():
+        try:
+            df = pd.read_csv(replay_path)
+            st.replay = df.reset_index(drop=True)
+            st.replay_proba = st.bundle.predict_proba(df[RAW_FEATURES])
+            _, contrib = st.bundle.contributions(df[RAW_FEATURES])
+            mean_abs = np.abs(contrib).mean(axis=0)
+            ranked = sorted(zip(st.bundle.feature_names, mean_abs), key=lambda kv: kv[1], reverse=True)[:15]
+            st.replay_importance = [{"feature": n, "importance": round(float(v), 6)} for n, v in ranked]
+        except Exception:
+            logger.exception("Could not score replay sample")
+            st.replay = None
+    logger.info("Loaded model %s (threshold %.4f)", st.bundle.version, st.bundle.threshold)
+    return st
 
 
-def shap_matrix(values):
-    if isinstance(values, list):
-        values = values[-1]
-    if hasattr(values, "values"):
-        values = values.values
-    values = np.asarray(values)
-    if values.ndim == 3:
-        values = values[:, :, -1]
-    return values
+def create_app(settings: Settings = None) -> FastAPI:
+    settings = settings or Settings()
+    configure_logging(settings.log_level)
 
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        app.state.sentinel = load_state(settings)
+        yield
 
-def record_predict_latency(started_at: float):
-    global predict_latency_total_ms, predict_latency_count
-    elapsed_ms = (time.perf_counter() - started_at) * 1000
-    with latency_lock:
-        predict_latency_total_ms += elapsed_ms
-        predict_latency_count += 1
+    app = FastAPI(title="SENTINEL Fraud Detection API", version=__version__, lifespan=lifespan)
+    app.state.settings = settings
+    app.state.limiter = SlidingWindowLimiter(settings.rate_limit_per_min)
+    app.state.sentinel = State()
+    app.state.sentinel.monitor = Monitor({}, 1, 1, 1)  # replaced in lifespan
 
+    app.add_middleware(CORSMiddleware, allow_origins=list(settings.allowed_origins),
+                       allow_methods=["GET", "POST"], allow_headers=["*"])
 
-load_model()
+    # ------------------------------------------------------------ middleware
+    @app.middleware("http")
+    async def request_context(request: Request, call_next):
+        rid = new_request_id(request.headers.get("x-request-id"))
+        token = request_id_var.set(rid)
+        request.state.request_id = rid
+        started = time.perf_counter()
+        try:
+            response = await call_next(request)
+            response.headers["X-Request-ID"] = rid
+            logger.info("%s %s -> %s (%.1f ms)", request.method, request.url.path, response.status_code,
+                        (time.perf_counter() - started) * 1000)
+            return response
+        finally:
+            request_id_var.reset(token)
 
+    @app.exception_handler(RequestValidationError)
+    async def validation_error(request: Request, exc: RequestValidationError):
+        # Never echo the submitted values back (they may be NaN/huge/sensitive); report location + message only.
+        errors = [{"loc": list(e["loc"]), "msg": e["msg"], "type": e["type"]} for e in exc.errors()]
+        return JSONResponse({"detail": errors}, status_code=422)
 
-class Transaction(BaseModel):
-    V1: float = 0
-    V2: float = 0
-    V3: float = 0
-    V4: float = 0
-    V5: float = 0
-    V6: float = 0
-    V7: float = 0
-    V8: float = 0
-    V9: float = 0
-    V10: float = 0
-    V11: float = 0
-    V12: float = 0
-    V13: float = 0
-    V14: float = 0
-    V15: float = 0
-    V16: float = 0
-    V17: float = 0
-    V18: float = 0
-    V19: float = 0
-    V20: float = 0
-    V21: float = 0
-    V22: float = 0
-    V23: float = 0
-    V24: float = 0
-    V25: float = 0
-    V26: float = 0
-    V27: float = 0
-    V28: float = 0
-    Amount: float = 100.0
+    @app.exception_handler(Exception)
+    async def unhandled(request: Request, exc: Exception):
+        rid = getattr(request.state, "request_id", "-")
+        logger.error("Unhandled error on %s %s [%s]", request.method, request.url.path, rid, exc_info=exc)
+        return JSONResponse({"detail": "Internal server error", "request_id": rid}, status_code=500,
+                            headers={"X-Request-ID": rid})
 
+    # ------------------------------------------------------------ helpers
+    def state() -> State:
+        return app.state.sentinel
 
-class BatchRequest(BaseModel):
-    transactions: List[Transaction]
+    def require_model() -> State:
+        st = state()
+        if st.bundle is None:
+            raise HTTPException(503, "Model is not loaded; service is not ready")
+        return st
 
+    def explain_rows(st: State, sub: pd.DataFrame):
+        """TreeSHAP contributions + reason codes for raw rows. Returns (contrib[n, f], [reasons per row])."""
+        bundle = st.bundle
+        _, contrib = bundle.contributions(sub)
+        unscaled = make_features(sub)
+        stats = st.reference.get("feature_stats", {})
+        names = bundle.feature_names
+        hours = ((sub["Time"].values % 86400) // 3600).astype(int)
+        out = [build_reasons(names, contrib[i], unscaled.iloc[i][names].values, stats, hour=int(hours[i]))
+               for i in range(len(sub))]
+        return contrib, out
 
-def risk_level(probability: float) -> str:
-    return "HIGH" if probability > 0.7 else "MEDIUM" if probability > 0.4 else "LOW"
+    def score(st: State, txns, explain: bool):
+        started = time.perf_counter()
+        raw = pd.DataFrame([t.model_dump() for t in txns])[RAW_FEATURES]
+        bundle = st.bundle
+        proba = bundle.predict_proba(raw)
+        flagged = proba >= bundle.threshold
 
-
-def top_factors(values, names):
-    factors = [
-        {
-            "feature": name,
-            "shap_value": round(float(value), 6),
-            "impact": "increases_risk" if value > 0 else "decreases_risk",
-        }
-        for name, value in zip(names or [], values)
-    ]
-    return sorted(factors, key=lambda item: abs(item["shap_value"]), reverse=True)[:5]
-
-
-def score_dataframe(df: pd.DataFrame):
-    """Prepare API transactions and score them in one model call."""
-    df = df.copy()
-    df["Amount"] = scaler.transform(df[["Amount"]]).ravel()
-    if feature_names:
-        df = df[feature_names]
-    probabilities = model.predict_proba(df)[:, 1]
-
-    shap_rows = [[] for _ in range(len(df))]
-    if explainer is not None:
-        values = shap_matrix(explainer.shap_values(df))
-        shap_rows = [top_factors(row, feature_names) for row in values]
-    return probabilities, shap_rows
-
-
-@app.get("/")
-async def index():
-    return FileResponse(FRONTEND)
-
-
-@app.get("/health")
-async def health():
-    return {"status": "online", "model_loaded": model is not None, "timestamp": datetime.now().isoformat()}
-
-
-@app.get("/model/info")
-async def model_info():
-    return {"model_type": "XGBoost", "features": len(feature_names) if feature_names else 29, "feature_names": feature_names or []}
-
-
-@app.post("/predict")
-def predict(t: Transaction):
-    started_at = time.perf_counter()
-    transaction_id = str(uuid.uuid4())
-    if model is None:
-        probability = random.uniform(0, 1)
-        record_predict_latency(started_at)
-        return {
-            "transaction_id": transaction_id,
-            "is_fraud": probability > 0.5,
-            "fraud_probability": round(probability, 4),
-            "risk_level": risk_level(probability),
-            "amount": t.Amount,
-            "timestamp": datetime.now().isoformat(),
-            "demo_mode": True,
-        }
-
-    try:
-        df = pd.DataFrame([t.model_dump()])
-        probabilities, shap_rows = score_dataframe(df)
-        probability = float(probabilities[0])
-        record_predict_latency(started_at)
-        return {
-            "transaction_id": transaction_id,
-            "is_fraud": probability > 0.5,
-            "fraud_probability": round(probability, 4),
-            "risk_level": risk_level(probability),
-            "amount": t.Amount,
-            "timestamp": datetime.now().isoformat(),
-            "top_risk_factors": shap_rows[0],
-            "demo_mode": False,
-        }
-    except Exception as exc:
-        record_predict_latency(started_at)
-        logger.exception("Prediction failed")
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
-
-
-@app.post("/predict/batch")
-def predict_batch(req: BatchRequest):
-    transactions = req.transactions
-    if model is None:
+        reasons = {}
+        if explain and flagged.any():
+            idx = np.where(flagged)[0]
+            _, per_row = explain_rows(st, raw.iloc[idx])
+            reasons = {int(orig): per_row[k] for k, orig in enumerate(idx)}
         results = []
-        for transaction in transactions:
-            probability = random.uniform(0, 1)
+        for i, t in enumerate(txns):
+            p = float(proba[i])
             results.append({
                 "transaction_id": str(uuid.uuid4()),
-                "is_fraud": probability > 0.5,
-                "fraud_probability": round(probability, 4),
-                "risk_level": risk_level(probability),
-                "amount": transaction.Amount,
-                "timestamp": datetime.now().isoformat(),
-                "demo_mode": True,
+                "is_fraud": bool(flagged[i]),
+                "fraud_probability": round(p, 6),
+                "risk_level": risk_level(p, bundle.threshold),
+                "threshold": round(bundle.threshold, 6),
+                "amount": t.Amount,
+                "timestamp": _now(),
+                "model_version": bundle.version,
+                "reasons": reasons.get(i),
             })
-    else:
-        try:
-            df = pd.DataFrame([transaction.model_dump() for transaction in transactions])
-            probabilities, shap_rows = score_dataframe(df) if transactions else ([], [])
-            results = []
-            for transaction, probability, factors in zip(transactions, probabilities, shap_rows):
-                probability = float(probability)
-                results.append({
-                    "transaction_id": str(uuid.uuid4()),
-                    "is_fraud": probability > 0.5,
-                    "fraud_probability": round(probability, 4),
-                    "risk_level": risk_level(probability),
-                    "amount": transaction.Amount,
-                    "timestamp": datetime.now().isoformat(),
-                    "top_risk_factors": factors,
-                    "demo_mode": False,
-                })
-        except Exception as exc:
-            logger.exception("Batch prediction failed")
-            raise HTTPException(status_code=500, detail=str(exc)) from exc
+        drift_keys = list(st.reference.get("psi_features", {}).keys())
+        drift_rows = [{k: float(raw.iloc[i][k]) for k in drift_keys if k in raw.columns} for i in range(len(raw))]
+        st.monitor.record(len(raw), int(flagged.sum()), (time.perf_counter() - started) * 1000, drift_rows)
+        return results
 
-    fraud_count = sum(1 for result in results if result["is_fraud"])
-    return {
-        "total": len(results),
-        "fraud_count": fraud_count,
-        "fraud_rate": round(fraud_count / len(results), 4) if results else 0,
-        "results": results,
-    }
+    # ------------------------------------------------------------ probes (open)
+    @app.get("/live")
+    def live():
+        return {"status": "alive"}
+
+    @app.get("/ready")
+    def ready():
+        st = state()
+        if st.bundle is None:
+            return JSONResponse({"status": "not_ready", "reason": "model not loaded"}, status_code=503)
+        return {"status": "ready", "model_version": st.bundle.version}
+
+    @app.get("/health")
+    def health():
+        st = state()
+        ok = st.bundle is not None
+        body = {"status": "ready" if ok else "not_ready", "model_loaded": ok,
+                "model_version": st.bundle.version if ok else None, "timestamp": _now()}
+        return JSONResponse(body, status_code=200 if ok else 503)
+
+    @app.get("/", include_in_schema=False)
+    def index():
+        if not settings.frontend_path.exists():
+            raise HTTPException(404, "Dashboard not found")
+        return FileResponse(settings.frontend_path)
+
+    # ------------------------------------------------------------ prediction
+    @app.post("/predict", response_model=Prediction, dependencies=[AccessDep])
+    def predict(t: Transaction, explain: bool = Query(False, description="Add reason codes (flagged transactions only)")):
+        st = require_model()
+        return score(st, [t], explain)[0]
+
+    @app.post("/predict/batch", response_model=BatchResponse, dependencies=[AccessDep])
+    def predict_batch(req: BatchRequest, explain: bool = Query(False)):
+        st = require_model()
+        results = score(st, req.transactions, explain)
+        fraud = sum(r["is_fraud"] for r in results)
+        return {"total": len(results), "fraud_count": fraud, "fraud_rate": round(fraud / len(results), 6),
+                "model_version": st.bundle.version, "reasons_note": DISCLAIMER if explain else None,
+                "results": results}
+
+    # ------------------------------------------------------------ info / stats
+    @app.get("/model/info", dependencies=[AccessDep])
+    def model_info():
+        st = require_model()
+        m = st.bundle.metadata
+        return {"model_type": "XGBoost", "model_version": m["model_version"], "strategy": m["strategy"],
+                "calibration": m["calibration_method"], "threshold": m["threshold"],
+                "risk_bands": m["risk_bands"], "costs": m["costs"], "features": len(m["feature_names"]),
+                "feature_names": m["feature_names"], "input_schema": m["raw_input_features"],
+                "data": {k: m["data"][k] for k in ("source", "synthetic", "rows", "frauds", "split_kind")},
+                "library_versions": m["library_versions"], "trained_at": m["trained_at"]}
+
+    @app.get("/stats/summary", dependencies=[AccessDep])
+    def stats():
+        st = require_model()
+        t = st.metrics.get("test", {})
+        val = lambda k: t.get(k, {}).get("value", 0.0)  # noqa: E731
+        total = flagged = caught = 0
+        saved = 0.0
+        if st.replay is not None and len(st.replay_proba):
+            f = st.replay_proba >= st.bundle.threshold
+            total, flagged = len(f), int(f.sum())
+            label = st.replay["Class"].values == 1
+            caught = int((f & label).sum())
+            saved = round(float(st.replay.loc[f & label, "Amount"].sum()), 2)
+        snap = st.monitor.snapshot()
+        return {
+            "source": "model/metrics.json (held-out test split)",
+            "synthetic_data": st.metrics.get("synthetic_data", None),
+            "model_version": st.bundle.version,
+            "threshold": st.bundle.threshold,
+            "replay_total": total, "replay_flagged": flagged, "replay_true_frauds_caught": caught,
+            "replay_flag_rate": round(flagged / total, 4) if total else 0.0,
+            "replay_fraud_amount_caught": saved,
+            "avg_response_ms": round(snap["latency_ms"]["mean"], 3),
+            "pr_auc": val("pr_auc"), "roc_auc": val("roc_auc"), "precision": val("precision"),
+            "recall": val("recall"), "f1": val("f1"), "accuracy": val("accuracy"),
+            "ci95": {k: t[k]["ci95"] for k in ("pr_auc", "precision", "recall", "f1") if k in t},
+            "confusion": st.metrics.get("test_confusion"),
+        }
+
+    @app.get("/shap/global", dependencies=[AccessDep])
+    def shap_global():
+        st = require_model()
+        return {"method": "mean |TreeSHAP| on replay sample (log-odds)", "feature_importance": st.replay_importance}
+
+    @app.get("/replay/feed", dependencies=[AccessDep])
+    def replay_feed():
+        """Rolling 20-row window over held-out test rows, scored by the loaded model. This is a replay, not live traffic."""
+        st = require_model()
+        if st.replay is None or not len(st.replay_proba):
+            return {"transactions": [], "count": 0, "source": "replay_of_held_out_test_data"}
+        n = len(st.replay_proba)
+        size = min(20, n)
+        with st.replay_lock:
+            start = st.replay_offset
+            st.replay_offset = (start + min(5, n)) % n
+        rows = []
+        for pos, i in enumerate([(start + k) % n for k in range(size)]):
+            p = float(st.replay_proba[i])
+            r = st.replay.iloc[i]
+            rows.append({
+                "id": f"REPLAY-{i:05d}", "row_index": i, "amount": round(float(r["Amount"]), 2),
+                "time_seconds": float(r["Time"]), "fraud_probability": round(p, 6),
+                "risk_level": risk_level(p, st.bundle.threshold),
+                "is_fraud": p >= st.bundle.threshold, "true_label": int(r["Class"]),
+            })
+        return {"transactions": rows, "count": len(rows), "source": "replay_of_held_out_test_data"}
+
+    @app.get("/replay/threshold", dependencies=[AccessDep])
+    def replay_threshold(value: float = Query(..., ge=0.0, le=1.0)):
+        """Real precision/recall/cost at an arbitrary threshold, measured on the labelled replay sample."""
+        st = require_model()
+        if st.replay is None:
+            raise HTTPException(404, "No replay sample available")
+        y = st.replay["Class"].values.astype(int)
+        flagged = st.replay_proba >= value
+        data = st.bundle.metadata["data"]
+        test_frauds = data["split_frauds"]["test"]
+        test_legit = data["split_rows"]["test"] - test_frauds
+        legit = y == 0
+
+        if "weight" in st.replay.columns:
+            wts = st.replay["weight"].values.astype(float)
+        else:  # older replay file: uniform legit weight
+            n_legit = int(legit.sum())
+            wts = np.where(legit, test_legit / n_legit if n_legit else 1.0, 1.0)
+        weighted = int(y.sum()) == test_frauds
+        if not weighted:
+            wts = np.ones(len(y))
+
+        tp, fn = int((flagged & (y == 1)).sum()), int((~flagged & (y == 1)).sum())
+        fp_s = int((flagged & legit).sum())
+        fp = float(wts[flagged & legit].sum())
+        tn = float(wts[~flagged & legit].sum())
+        hard = legit & (wts == 1.0)
+        exact_from = float(st.replay_proba[hard].min()) if weighted and hard.any() else None
+        exact = bool(weighted and exact_from is not None and value >= exact_from)
+
+        precision = tp / (tp + fp) if tp + fp else 0.0
+        recall = tp / (tp + fn) if tp + fn else 0.0
+        costs = st.bundle.metadata["costs"]
+        if exact:
+            note = (f"Exact for the full held-out test split at this threshold (all {int(y.sum())} frauds and every "
+                    f"legitimate row scoring >= {exact_from:.3f} are in the replay sample).")
+        elif weighted:
+            note = (f"Estimated for the full test split: below {exact_from if exact_from is not None else 0:.3f} the "
+                    f"false-alarm count is scaled up from a random sample of easy rows, so it is noisy. "
+                    f"Only {int(y.sum())} frauds: a guide, not a guarantee.")
+        else:
+            note = ("Measured on the raw replay sample (not prevalence-corrected); precision and cost are not "
+                    "comparable to metrics.json.")
+        return {"threshold": value, "model_threshold": st.bundle.threshold, "rows": len(y), "frauds": int(y.sum()),
+                "weighted": weighted, "exact": exact, "exact_from": exact_from,
+                "tp": tp, "fp": int(round(fp)), "fn": fn, "tn": int(round(tn)), "fp_sampled": fp_s,
+                "precision": round(precision, 4), "recall": round(recall, 4),
+                "f1": round(2 * precision * recall / (precision + recall), 4) if precision + recall else 0.0,
+                "expected_cost": round(fn * costs["false_negative"] + fp * costs["false_positive"], 2),
+                "note": note}
+
+    @app.get("/replay/explain", dependencies=[AccessDep])
+    def replay_explain(flagged: bool = Query(True)):
+        """Real TreeSHAP explanation for the next flagged (or unflagged) replay row."""
+        st = require_model()
+        if st.replay is None:
+            raise HTTPException(404, "No replay sample available")
+        mask = st.replay_proba >= st.bundle.threshold
+        pool = np.where(mask if flagged else ~mask)[0]
+        if not len(pool):
+            raise HTTPException(404, "No matching rows in the replay sample")
+        with st.replay_lock:
+            i = int(pool[st.explain_offset % len(pool)])
+            st.explain_offset += 1
+        sub = st.replay.iloc[[i]][RAW_FEATURES]
+        contrib, reasons = explain_rows(st, sub)
+        names = st.bundle.feature_names
+        order = np.argsort(-np.abs(contrib[0]))[:10]
+        p = float(st.replay_proba[i])
+        return {"row_index": i, "amount": float(sub["Amount"].iloc[0]), "fraud_probability": round(p, 6),
+                "is_fraud": p >= st.bundle.threshold, "true_label": int(st.replay["Class"].iloc[i]),
+                "risk_level": risk_level(p, st.bundle.threshold),
+                "contributions": [{"feature": names[j], "contribution": round(float(contrib[0][j]), 4)} for j in order],
+                "reasons": reasons[0], "note": DISCLAIMER}
+
+    # ------------------------------------------------------------ monitoring
+    @app.get("/monitoring/metrics", dependencies=[AccessDep])
+    def monitoring_metrics():
+        require_model()
+        return state().monitor.snapshot()
+
+    @app.get("/monitoring/drift", dependencies=[AccessDep])
+    def monitoring_drift():
+        require_model()
+        return state().monitor.drift_report()
+
+    return app
 
 
-@app.get("/stream/live")
-def live():
-    global live_offset
-    merchants = ["Amazon", "Walmart", "Shell", "Starbucks", "Netflix", "Uber", "Apple", "Zomato", "Swiggy", "Flipkart"]
-    locations = ["Mumbai", "Delhi", "Bangalore", "Chennai", "Hyderabad", "Pune", "Kolkata", "Ahmedabad"]
-    if model is None:
-        return {"transactions": [], "count": 0, "demo_mode": True}
-    if test_sample is None:
-        return {"transactions": [], "count": 0, "demo_mode": False}
-
-    now = datetime.now()
-    txns = []
-    sample_count = len(test_probabilities)
-    if sample_count == 0:
-        return {"transactions": [], "count": 0, "demo_mode": False}
-
-    window_size = min(20, sample_count)
-    with live_offset_lock:
-        start = live_offset
-        row_indices = [(start + i) % sample_count for i in range(window_size)]
-        live_offset = (live_offset + min(5, sample_count)) % sample_count
-
-    for window_position, sample_index in enumerate(row_indices):
-        probability = float(test_probabilities[sample_index])
-        amount = float(test_amounts[sample_index])
-        txns.append({
-            "id": f"TXN{1000 + sample_index}",
-            "amount": round(amount, 2),
-            "timestamp": (now - timedelta(seconds=window_position * 3)).isoformat(),
-            "is_fraud": probability > 0.5,
-            "fraud_probability": round(probability, 4),
-            "risk_level": risk_level(probability),
-            "merchant": random.choice(merchants),
-            "location": random.choice(locations),
-            "simulated": True,
-        })
-    return {"transactions": txns, "count": len(txns), "demo_mode": False}
-
-
-@app.get("/stats/summary")
-def stats():
-    metrics_path = os.path.join(MODEL_PATH, "metrics.json")
-    try:
-        with open(metrics_path, "r", encoding="utf-8") as metrics_file:
-            metrics = json.load(metrics_file)
-        source = "model/metrics.json"
-    except (OSError, json.JSONDecodeError):
-        metrics = {}
-        source = "unavailable"
-    if not isinstance(metrics, dict):
-        metrics = {}
-        source = "unavailable"
-
-    if model is None:
-        total = fraud = amount_saved = 0
-    else:
-        total = len(test_probabilities)
-        fraud_mask = test_probabilities > 0.5
-        fraud = int(fraud_mask.sum())
-        amount_saved = round(float(test_amounts[fraud_mask].sum()), 2) if len(test_amounts) else 0.0
-
-    def metric_value(name):
-        try:
-            return float(metrics.get(name, 0.0))
-        except (TypeError, ValueError):
-            return 0.0
-
-    with latency_lock:
-        average_latency = predict_latency_total_ms / predict_latency_count if predict_latency_count else 0.0
-
-    return {
-        "total_transactions": total,
-        "fraud_detected": fraud,
-        "fraud_rate": round(fraud / total, 4) if total else 0.0,
-        "amount_saved": amount_saved,
-        "avg_response_ms": round(average_latency, 3),
-        "model_accuracy": metric_value("accuracy"),
-        "precision": metric_value("precision"),
-        "recall": metric_value("recall"),
-        "f1_score": metric_value("f1"),
-        "roc_auc": metric_value("roc_auc"),
-        "source": source,
-        "demo_mode": model is None,
-    }
-
-
-@app.get("/shap/global")
-def shap_global():
-    return {"feature_importance": global_feature_importance if model is not None else []}
+app = create_app()
